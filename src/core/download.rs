@@ -16,13 +16,20 @@ use tokio::io::AsyncWriteExt;
 
 use super::progress::Progress;
 
-/// Build a shared reqwest client with sensible defaults.
+/// Build a shared reqwest client with FIPS-compliant TLS settings.
+///
+/// # TLS Hardening (SP 800-52 Rev 2)
+/// - Enforces TLS 1.2 minimum (§3.1: "Servers and clients SHALL support TLS 1.2")
+/// - In FIPS mode, HTTPS-only (plaintext HTTP rejected)
+/// - rustls provides WebPKI certificate validation
+///
+/// # Limitations
+/// - rustls is not CMVP-validated. For full FIPS 140-2/3 TLS compliance,
+///   aws-lc-rs backend is required (tracked as CRYPTO-05).
 fn build_client() -> Result<reqwest::Client> {
-    Ok(reqwest::Client::builder()
-        .user_agent(format!("abt/{}", env!("CARGO_PKG_VERSION")))
-        .timeout(std::time::Duration::from_secs(7200)) // 2 hour max for large images
-        .connect_timeout(std::time::Duration::from_secs(30))
-        .build()?)
+    // Use the compliance module's TLS-hardened builder
+    super::compliance::build_compliant_client()
+        .map_err(|e| anyhow::anyhow!("Failed to build TLS client: {}", e))
 }
 
 /// Send a GET request and validate the HTTP status.
@@ -50,6 +57,10 @@ pub async fn download_streaming(
     url: &str,
     progress: &Progress,
 ) -> Result<PathBuf> {
+    // SC.L2-3.13.8 / SP 800-52: Validate URL transport security
+    super::compliance::validate_download_url(url)
+        .map_err(|e| anyhow::anyhow!(e))?;
+
     info!("Streaming download: {}", url);
 
     let client = build_client()?;

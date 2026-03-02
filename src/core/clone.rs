@@ -253,6 +253,8 @@ fn hash_device_region(
 /// Check if a buffer is all zeros using u64-aligned word comparison.
 fn is_all_zero(buf: &[u8]) -> bool {
     // Fast path: check u64-aligned words
+    // SAFETY: `align_to` returns a valid decomposition of the byte slice.
+    // Read-only access, no aliasing. All bytes checked exactly once.
     let (prefix, words, suffix) = unsafe { buf.align_to::<u64>() };
     prefix.iter().all(|&b| b == 0) && words.iter().all(|&w| w == 0) && suffix.iter().all(|&b| b == 0)
 }

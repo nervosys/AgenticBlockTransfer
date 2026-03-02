@@ -5,6 +5,42 @@ All notable changes to AgenticBlockTransfer (abt) will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-03-02
+
+### Added
+
+#### Core
+- NIST FIPS 140-2/140-3 compliance module with FIPS mode (monotonic, `--fips` flag or `ABT_FIPS_MODE=1`): restricts to FIPS-approved algorithms (SHA-256, SHA-512 only), rejects MD5/SHA-1/BLAKE3/CRC32 in FIPS mode
+- FIPS 180-4 / SP 800-131A Rev 2 hash algorithm validation: approval status classification (Approved/Deprecated/NotApproved), runtime enforcement at hash_reader entry point
+- NIST SP 800-90A compliant random data generation: OS CSPRNG via `getrandom` in FIPS mode replaces xorshift64 PRNG for cryptographic erase operations
+- NIST SP 800-88 Rev 1 sanitization records: `SanitizationRecord` struct capturing device, serial, method, passes, verification, operator, hostname per Table A-8; sanitization level classification (Clear/Purge/Destroy)
+- CMMC 2.0 Level 2 structured audit trail: `AuditEvent` with who/what/when/where/outcome (AU.L2-3.3.1/3.3.2), HMAC-SHA256 integrity chain for tamper detection (AU.L2-3.3.8), JSON export for SIEM integration
+- FIPS-compliant device fingerprinting: SHA-256 (FIPS 180-4) replaces BLAKE3 in FIPS mode for `DeviceFingerprint::from_device()`
+- TLS hardening per SP 800-52 Rev 2: TLS 1.2 minimum enforced, HTTPS-only in FIPS mode, URL transport validation
+- Compliance self-assessment report: `abt compliance` command with 7 automated findings across FIPS 140, SP 800-88, SP 800-52, CMMC AU/SC practices; text and JSON output
+- Formal verification module: 10 Safety Invariants (SI-1 through SI-10), 8 Kani proof harnesses, compile-time static assertions, runtime contract macros (`require!`, `ensure_post!`, `invariant!`)
+- Property-based testing: 24 proptest harnesses validating all safety invariants with randomized inputs
+- Complete unsafe audit: SAFETY comments on all 17 unsafe blocks documenting invariants, aliasing, and validity
+
+#### CLI
+- `abt compliance` / `audit` — run FIPS/CMMC/DoD compliance self-assessment with `--json` and `--save-audit-log` options
+- `--fips` global flag — enable FIPS 140 compliance mode for any command
+
+#### Documentation
+- Compliance documentation chapter: CMMC 2.0 practice mapping, hash algorithm reference, sanitization records, audit trail format, known limitations
+
+### Changed
+- Device fingerprint uses SHA-256 in FIPS mode (BLAKE3 remains default for performance)
+- Random-fill erase uses OS CSPRNG in FIPS mode (xorshift64 remains default for throughput)
+- Download client enforces TLS 1.2 minimum and validates URL transport security
+- Hash reader validates algorithm against FIPS approval status before proceeding
+
+### Security
+- FIPS mode blocks cryptographically broken algorithms (MD5) and non-FIPS algorithms (BLAKE3, CRC32) at runtime
+- Audit events with HMAC-SHA256 integrity chain prevent undetected log tampering
+- HTTPS-only download enforcement in FIPS mode prevents plaintext data exposure
+- SP 800-90A compliant CSPRNG for media sanitization random fill
+
 ## [1.6.0] - 2026-06-15
 
 ### Added

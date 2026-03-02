@@ -18,31 +18,31 @@ use std::io::{Seek, SeekFrom, Write};
 use std::time::Instant;
 
 /// Candidate block sizes to benchmark, in ascending order.
-const CANDIDATES: &[usize] = &[
-    64 * 1024,       // 64 KiB
-    256 * 1024,      // 256 KiB
-    1024 * 1024,     // 1 MiB
-    4 * 1024 * 1024, // 4 MiB
-    8 * 1024 * 1024, // 8 MiB
+pub(crate) const CANDIDATES: &[usize] = &[
+    64 * 1024,        // 64 KiB
+    256 * 1024,       // 256 KiB
+    1024 * 1024,      // 1 MiB
+    4 * 1024 * 1024,  // 4 MiB
+    8 * 1024 * 1024,  // 8 MiB
     16 * 1024 * 1024, // 16 MiB
 ];
 
 /// Number of blocks to write per candidate for benchmarking.
 /// Each block is written once, so total data per candidate = block_size * BENCH_BLOCKS.
-const BENCH_BLOCKS: usize = 4;
+pub(crate) const BENCH_BLOCKS: usize = 4;
 
 /// Minimum improvement threshold (fraction) to justify a larger block size.
 /// If going from size N to size 2N gains less than this fraction of throughput,
 /// we stop and use size N.
-const DIMINISHING_RETURNS_THRESHOLD: f64 = 0.10;
+pub(crate) const DIMINISHING_RETURNS_THRESHOLD: f64 = 0.10;
 
 /// Maximum block size we'll ever recommend (16 MiB). Beyond this, memory use
 /// and alignment issues outweigh throughput gains on most hardware.
-const MAX_BLOCK_SIZE: usize = 16 * 1024 * 1024;
+pub const MAX_BLOCK_SIZE: usize = 16 * 1024 * 1024;
 
 /// Minimum block size floor (64 KiB). Even if the benchmark shows lower sizes
 /// are faster (unlikely), we never go below this.
-const MIN_BLOCK_SIZE: usize = 64 * 1024;
+pub const MIN_BLOCK_SIZE: usize = 64 * 1024;
 
 /// Result of a single block-size benchmark.
 #[derive(Debug, Clone)]
@@ -67,11 +67,20 @@ pub struct AdaptiveTuneResult {
 impl std::fmt::Display for AdaptiveTuneResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Adaptive Block Size Tuning Results:")?;
-        writeln!(f, "  {:>10}  {:>12}  {:>10}", "Block Size", "Throughput", "Time")?;
-        writeln!(f, "  {:>10}  {:>12}  {:>10}", "----------", "----------", "------")?;
+        writeln!(
+            f,
+            "  {:>10}  {:>12}  {:>10}",
+            "Block Size", "Throughput", "Time"
+        )?;
+        writeln!(
+            f,
+            "  {:>10}  {:>12}  {:>10}",
+            "----------", "----------", "------"
+        )?;
         for b in &self.benchmarks {
             let size = humansize::format_size(b.block_size as u64, humansize::BINARY);
-            let speed = humansize::format_size(b.throughput_bytes_per_sec as u64, humansize::BINARY);
+            let speed =
+                humansize::format_size(b.throughput_bytes_per_sec as u64, humansize::BINARY);
             writeln!(
                 f,
                 "  {:>10}  {:>10}/s  {:>8.2}s",
@@ -117,7 +126,10 @@ pub fn determine_optimal_block_size(target: &str, direct_io: bool) -> Result<Ada
                 debug!(
                     "  {} => {}/s",
                     humansize::format_size(candidate_size as u64, humansize::BINARY),
-                    humansize::format_size(result.throughput_bytes_per_sec as u64, humansize::BINARY)
+                    humansize::format_size(
+                        result.throughput_bytes_per_sec as u64,
+                        humansize::BINARY
+                    )
                 );
 
                 let throughput = result.throughput_bytes_per_sec;
@@ -167,7 +179,11 @@ pub fn determine_optimal_block_size(target: &str, direct_io: bool) -> Result<Ada
 }
 
 /// Benchmark a single block size by writing BENCH_BLOCKS blocks to the target.
-fn benchmark_block_size(target: &str, block_size: usize, direct_io: bool) -> Result<BlockSizeBenchmark> {
+fn benchmark_block_size(
+    target: &str,
+    block_size: usize,
+    direct_io: bool,
+) -> Result<BlockSizeBenchmark> {
     let mut file = open_for_bench(target, direct_io)?;
 
     // Generate a test pattern (repeating bytes — not zeros, to avoid sparse
@@ -257,13 +273,38 @@ impl<T: Write + Seek> WriteSeek for T {}
 
 /// Select a reasonable default block size based on device size without benchmarking.
 /// Used when benchmarking is not desired or not possible.
+///
+/// # Safety Invariant SI-3
+/// The returned block size is always within [MIN_BLOCK_SIZE, MAX_BLOCK_SIZE]
+/// and is a power of two.
 pub fn heuristic_block_size(device_size_bytes: u64) -> usize {
-    match device_size_bytes {
-        0..=134_217_728 => 256 * 1024,           // ≤128 MiB → 256 KiB
-        134_217_729..=4_294_967_296 => 1024 * 1024,   // ≤4 GiB → 1 MiB
+    let result = match device_size_bytes {
+        0..=134_217_728 => 256 * 1024,              // ≤128 MiB → 256 KiB
+        134_217_729..=4_294_967_296 => 1024 * 1024, // ≤4 GiB → 1 MiB
         4_294_967_297..=34_359_738_368 => 4 * 1024 * 1024, // ≤32 GiB → 4 MiB
-        _ => 8 * 1024 * 1024,                    // >32 GiB → 8 MiB
-    }
+        _ => 8 * 1024 * 1024,                       // >32 GiB → 8 MiB
+    };
+
+    // SI-3: Postconditions
+    debug_assert!(
+        result >= MIN_BLOCK_SIZE,
+        "POSTCONDITION VIOLATED: heuristic_block_size returned {} < MIN_BLOCK_SIZE ({})",
+        result,
+        MIN_BLOCK_SIZE
+    );
+    debug_assert!(
+        result <= MAX_BLOCK_SIZE,
+        "POSTCONDITION VIOLATED: heuristic_block_size returned {} > MAX_BLOCK_SIZE ({})",
+        result,
+        MAX_BLOCK_SIZE
+    );
+    debug_assert!(
+        result.is_power_of_two(),
+        "POSTCONDITION VIOLATED: heuristic_block_size returned {} which is not a power of two",
+        result
+    );
+
+    result
 }
 
 #[cfg(test)]
@@ -282,12 +323,18 @@ mod tests {
 
     #[test]
     fn heuristic_large_device() {
-        assert_eq!(heuristic_block_size(16u64 * 1024 * 1024 * 1024), 4 * 1024 * 1024);
+        assert_eq!(
+            heuristic_block_size(16u64 * 1024 * 1024 * 1024),
+            4 * 1024 * 1024
+        );
     }
 
     #[test]
     fn heuristic_huge_device() {
-        assert_eq!(heuristic_block_size(256u64 * 1024 * 1024 * 1024), 8 * 1024 * 1024);
+        assert_eq!(
+            heuristic_block_size(256u64 * 1024 * 1024 * 1024),
+            8 * 1024 * 1024
+        );
     }
 
     #[test]

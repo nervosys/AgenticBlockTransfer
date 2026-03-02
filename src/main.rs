@@ -81,6 +81,14 @@ async fn main() -> Result<()> {
 
     info!("abt v{}", env!("CARGO_PKG_VERSION"));
 
+    // ── FIPS Compliance Mode ───────────────────────────────────────────────
+    // Initialize from environment variable first, then CLI flag overrides.
+    // FIPS mode is monotonic: once enabled, cannot be disabled.
+    core::compliance::init_fips_from_env();
+    if args.fips {
+        core::compliance::enable_fips_mode();
+    }
+
     // Install global Ctrl+C handler for graceful shutdown.
     // The Progress handle is shared: commands that perform long-running work
     // check `progress.is_cancelled()` on every block / chunk.
@@ -140,5 +148,28 @@ async fn main() -> Result<()> {
         cli::Command::ProcLock(opts) => cli::commands::proclock::execute(opts).await,
         cli::Command::Elevate(opts) => cli::commands::elevate::execute(opts).await,
         cli::Command::Optical(opts) => cli::commands::optical::execute(opts).await,
+        cli::Command::Compliance(opts) => {
+            if opts.json {
+                let findings = core::compliance::self_assessment();
+                let json = serde_json::json!({
+                    "compliance_report": {
+                        "tool": "abt",
+                        "version": env!("CARGO_PKG_VERSION"),
+                        "fips_mode": core::compliance::is_fips_mode(),
+                        "findings": findings,
+                        "audit_log": core::compliance::export_audit_log(),
+                    }
+                });
+                println!("{}", serde_json::to_string_pretty(&json)?);
+            } else {
+                core::compliance::print_compliance_report();
+            }
+
+            if let Some(ref dir) = opts.save_audit_log {
+                core::compliance::save_audit_log(std::path::Path::new(dir))?;
+            }
+
+            Ok(())
+        }
     }
 }

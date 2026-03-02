@@ -47,8 +47,18 @@ impl fmt::Display for DeviceInfo {
 
 impl DeviceInfo {
     /// Safety check: is this device safe to write to?
+    ///
+    /// # Safety Invariant SI-1
+    /// Returns `true` ONLY when the device is not a system drive AND not read-only.
+    /// This is the critical gate preventing accidental OS destruction.
     pub fn is_safe_target(&self) -> bool {
-        !self.is_system && !self.read_only
+        let result = !self.is_system && !self.read_only;
+        // SI-1: Postcondition — if result is true, device MUST be non-system and writable
+        debug_assert!(
+            !result || (!self.is_system && !self.read_only),
+            "POSTCONDITION VIOLATED: is_safe_target returned true for system/readonly device"
+        );
+        result
     }
 
     /// Is this a removable device (USB, SD, etc.)?

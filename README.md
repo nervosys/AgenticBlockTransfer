@@ -1,7 +1,7 @@
 <p align="center">
   <img src="media/image/banner_logo_01.png" alt="AgenticBlockTransfer Banner" width="800"/>
   <br/>
-  <b>A better dd for AI agents and humans for the next 50 years!</b>
+  <b>A better dd for AI agents and humans alike for the next 50 years!</b>
 </p>
 
 **AgenticBlockTransfer** or `abt` is a cross-platform disk imaging tool that reads, writes, verifies, hashes, and formats block devices via CLI, TUI, and GUI interfaces — with native support for AI agent orchestration through JSON-LD ontology, OpenAPI, and MCP. `abt` provides both an agentic-first CLI successor to `dd` and a human-first GUI/TUI successor to balenaEtcher, Ventoy, Rufus, Fedora Media Writer, and rpi-imager.
@@ -84,6 +84,11 @@ The name **AgenticBlockTransfer** is a direct nod: *Block Transfer* from IBM's B
 - **Sleep inhibitor** — RAII-guarded OS sleep prevention during writes (systemd-inhibit on Linux, caffeinate on macOS, SetThreadExecutionState on Windows)
 - **Drive backup** — `abt backup` — save drive contents to compressed image with 5 formats (none/gzip/zstd/bzip2/xz), inline SHA-256, sparse zero-skip
 - **Persistent storage** — `abt persist` — create persistent storage for live Linux USB (casper/Fedora/Ventoy modes), partition or image file based
+- **FIPS compliance mode** — `--fips` flag or `ABT_FIPS_MODE=1` restricts to FIPS-approved algorithms (SHA-256/SHA-512), OS CSPRNG for erase, TLS 1.2+ minimum, HTTPS-only downloads
+- **Compliance self-assessment** — `abt compliance` runs NIST FIPS 140, SP 800-88, CMMC 2.0 Level 2, and DoD standard checks with JSON output for SIEM integration
+- **Structured audit trail** — HMAC-SHA256 integrity-chained security event log per CMMC AU.L2-3.3.1/3.3.8
+- **Sanitization records** — NIST SP 800-88 Rev 1 §4.7 compliant certificates for every erase operation
+- **Formal verification** — 10 Safety Invariants with Kani proof harnesses, 24 property-based tests, compile-time static assertions
 
 ## Quick Start
 
@@ -153,6 +158,15 @@ abt boot ubuntu.iso --json
 # Browse Raspberry Pi OS catalog
 abt catalog
 abt catalog --search ubuntu --flat
+
+# Run compliance self-assessment
+abt compliance
+
+# Compliance report in JSON (for SIEM/auditor)
+abt compliance --json
+
+# Enable FIPS mode for all operations
+abt --fips write -i image.iso -o /dev/sdb
 
 # Export ontology as OpenAPI schema
 abt ontology -f openapi
@@ -307,19 +321,20 @@ cargo build --release --no-default-features --features cli
 
 ## Commands
 
-| Command       | Aliases                  | Description                                |
-| ------------- | ------------------------ | ------------------------------------------ |
-| `write`       | `flash`, `dd`            | Write an image to a target device          |
-| `verify`      | —                        | Verify written data against source or hash |
-| `list`        | `devices`, `ls`          | List available block devices               |
-| `info`        | `inspect`                | Show detailed device or image information  |
-| `checksum`    | `hash`                   | Compute file/device checksums              |
-| `format`      | `mkfs`                   | Format a device with a filesystem          |
-| `ontology`    | `schema`, `capabilities` | Export AI-discoverable capability ontology |
-| `completions` | —                        | Generate shell completions                 |
-| `tui`         | —                        | Launch interactive terminal UI             |
-| `gui`         | —                        | Launch native graphical UI                 |
-| `multiboot`   | `ventoy`                 | Manage multi-boot USB devices              |
+| Command       | Aliases                  | Description                                 |
+| ------------- | ------------------------ | ------------------------------------------- |
+| `write`       | `flash`, `dd`            | Write an image to a target device           |
+| `verify`      | —                        | Verify written data against source or hash  |
+| `list`        | `devices`, `ls`          | List available block devices                |
+| `info`        | `inspect`                | Show detailed device or image information   |
+| `checksum`    | `hash`                   | Compute file/device checksums               |
+| `format`      | `mkfs`                   | Format a device with a filesystem           |
+| `ontology`    | `schema`, `capabilities` | Export AI-discoverable capability ontology  |
+| `completions` | —                        | Generate shell completions                  |
+| `tui`         | —                        | Launch interactive terminal UI              |
+| `gui`         | —                        | Launch native graphical UI                  |
+| `multiboot`   | `ventoy`                 | Manage multi-boot USB devices               |
+| `compliance`  | `audit`                  | FIPS / CMMC 2.0 / DoD compliance assessment |
 
 ### Write
 
@@ -443,15 +458,15 @@ src/
 │   ├── multicast.rs     # UDP multicast imaging sender/receiver
 │   ├── multiboot.rs     # Ventoy-style multi-boot registry and GRUB config
 │   ├── i18n.rs          # Localization — 12 locales, message catalogs
-│   └── a11y.rs          # Accessibility — ARIA roles, WCAG contrast, announcements
-├── platform/
+│   └── a11y.rs          # Accessibility — ARIA roles, WCAG contrast, announcements│   ├── compliance.rs    # FIPS 140, SP 800-88, CMMC 2.0 compliance engine
+│   └── verification.rs  # Formal verification harnesses, safety invariants├── platform/
 │   ├── linux.rs         # sysfs + lsblk enumeration
 │   ├── macos.rs         # diskutil enumeration
 │   ├── windows.rs       # PowerShell Get-Disk enumeration
 │   ├── freebsd.rs       # sysctl + geom enumeration
 │   └── stub.rs          # Fallback for unsupported platforms
 ├── cli/
-│   ├── mod.rs           # Clap argument definitions (24 commands)
+│   ├── mod.rs           # Clap argument definitions (25 commands)
 │   └── commands/        # Command implementations (write, verify, list, multiboot, etc.)
 ├── ontology/
 │   └── mod.rs           # JSON-LD capability schema generator
@@ -468,6 +483,7 @@ src/
 3. **Streaming I/O** — decompress → write → verify in a single pass with configurable block size
 4. **Platform abstraction** — trait-based device enumeration with OS-specific implementations
 5. **Feature-gated UIs** — CLI always available; TUI and GUI are compile-time optional
+6. **Compliance-ready** — FIPS mode restricts to approved algorithms; audit trail with HMAC integrity chain; SP 800-88 sanitization records
 
 ### Performance & Reliability Engineering
 
@@ -534,6 +550,7 @@ The I/O engine is designed for production reliability on real hardware:
 | Multi-boot      | —   | —      | —     | —           | ✅      | —          | ✅       |
 | i18n            | —   | —      | —     | —           | ✅      | —          | ✅       |
 | Accessibility   | —   | —      | —     | —           | —      | —          | ✅       |
+| FIPS compliance | —   | —      | —     | —           | —      | —          | ✅       |
 
 ## License
 

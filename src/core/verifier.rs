@@ -105,6 +105,8 @@ pub fn verify_mmap(
 
     // Try memory-mapped read of the target
     let target_file = std::fs::File::open(target)?;
+    // SAFETY: target_file is open and lives for the duration of this function.
+    // The mmap borrows the file descriptor. No concurrent writes to the mapping.
     let mmap = match unsafe { memmap2::Mmap::map(&target_file) } {
         Ok(m) => m,
         Err(e) => {

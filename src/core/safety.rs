@@ -60,7 +60,10 @@ impl std::str::FromStr for SafetyLevel {
             "low" | "normal" => Ok(Self::Low),
             "medium" | "cautious" | "agent" => Ok(Self::Medium),
             "high" | "paranoid" | "max" => Ok(Self::High),
-            _ => Err(format!("Unknown safety level: '{}'. Use: low, medium, high", s)),
+            _ => Err(format!(
+                "Unknown safety level: '{}'. Use: low, medium, high",
+                s
+            )),
         }
     }
 }
@@ -96,17 +99,37 @@ pub struct DeviceFingerprint {
 
 impl DeviceFingerprint {
     /// Create a fingerprint from a DeviceInfo.
+    ///
+    /// # FIPS Compliance
+    /// In FIPS mode, uses SHA-256 (FIPS 180-4 approved) instead of BLAKE3.
+    /// BLAKE3 is not NIST-approved and must not be used for integrity-relevant
+    /// operations in federal / DoD environments.
+    ///
+    /// In default mode, BLAKE3 is used for performance (faster than SHA-256).
     pub fn from_device(dev: &DeviceInfo) -> Self {
-        let mut hasher = blake3::Hasher::new();
-        hasher.update(dev.path.as_bytes());
-        hasher.update(dev.name.as_bytes());
-        if let Some(ref s) = dev.serial {
-            hasher.update(s.as_bytes());
-        }
-        hasher.update(&dev.size.to_le_bytes());
-        hasher.update(&[dev.removable as u8, dev.is_system as u8]);
-        let hash = hasher.finalize();
-        let token = hex::encode(&hash.as_bytes()[..16]); // 128-bit token
+        let token = if super::compliance::is_fips_mode() {
+            // SP 800-131A / FIPS 180-4: Use SHA-256
+            super::compliance::fips_device_token(
+                &dev.path,
+                &dev.name,
+                dev.serial.as_deref(),
+                dev.size,
+                dev.removable,
+                dev.is_system,
+            )
+        } else {
+            // Default: BLAKE3 (fast, not FIPS-approved)
+            let mut hasher = blake3::Hasher::new();
+            hasher.update(dev.path.as_bytes());
+            hasher.update(dev.name.as_bytes());
+            if let Some(ref s) = dev.serial {
+                hasher.update(s.as_bytes());
+            }
+            hasher.update(&dev.size.to_le_bytes());
+            hasher.update(&[dev.removable as u8, dev.is_system as u8]);
+            let hash = hasher.finalize();
+            hex::encode(&hash.as_bytes()[..16]) // 128-bit token
+        };
 
         Self {
             path: dev.path.clone(),
@@ -225,24 +248,34 @@ impl SafetyReport {
         eprintln!();
 
         for check in &self.checks {
-            let icon = if check.passed { "✓" } else { match check.severity {
-                CheckSeverity::Error => "✗",
-                CheckSeverity::Warning => "⚠",
-                CheckSeverity::Info => "·",
-            }};
+            let icon = if check.passed {
+                "✓"
+            } else {
+                match check.severity {
+                    CheckSeverity::Error => "✗",
+                    CheckSeverity::Warning => "⚠",
+                    CheckSeverity::Info => "·",
+                }
+            };
             let severity = if check.passed {
                 "OK".to_string()
             } else {
                 format!("{}", check.severity)
             };
-            eprintln!("  {} [{}] {} — {}", icon, severity, check.description, check.detail);
+            eprintln!(
+                "  {} [{}] {} — {}",
+                icon, severity, check.description, check.detail
+            );
         }
 
         eprintln!();
         if self.safe_to_proceed {
             eprintln!("  Result: SAFE TO PROCEED ({} warnings)", self.warnings);
         } else {
-            eprintln!("  Result: BLOCKED ({} errors, {} warnings)", self.errors, self.warnings);
+            eprintln!(
+                "  Result: BLOCKED ({} errors, {} warnings)",
+                self.errors, self.warnings
+            );
         }
 
         if let Some(ref fp) = self.device_fingerprint {
@@ -367,7 +400,8 @@ pub async fn preflight_check(
                 description: "Target device exists".into(),
                 passed: true,
                 severity: CheckSeverity::Info,
-                detail: format!("{} ({}, {})",
+                detail: format!(
+                    "{} ({}, {})",
                     dev.name,
                     humansize::format_size(dev.size, humansize::BINARY),
                     dev.device_type
@@ -407,7 +441,10 @@ pub async fn preflight_check(
             passed: !dev.is_system,
             severity: CheckSeverity::Error,
             detail: if dev.is_system {
-                format!("DANGER: {} is a system drive! Writing here will destroy your OS.", dev.path)
+                format!(
+                    "DANGER: {} is a system drive! Writing here will destroy your OS.",
+                    dev.path
+                )
             } else {
                 "Not a system drive".into()
             },
@@ -494,13 +531,21 @@ pub async fn preflight_check(
                         id: "image_fits".into(),
                         description: "Image fits on target device".into(),
                         passed: fits,
-                        severity: if fits { CheckSeverity::Info } else { CheckSeverity::Error },
+                        severity: if fits {
+                            CheckSeverity::Info
+                        } else {
+                            CheckSeverity::Error
+                        },
                         detail: if fits {
                             format!(
                                 "Image {} ≤ Device {} ({}% of device)",
                                 humansize::format_size(image_size, humansize::BINARY),
                                 humansize::format_size(dev.size, humansize::BINARY),
-                                if dev.size > 0 { image_size * 100 / dev.size } else { 0 }
+                                if dev.size > 0 {
+                                    image_size * 100 / dev.size
+                                } else {
+                                    0
+                                }
                             )
                         } else {
                             format!(
@@ -600,7 +645,7 @@ pub async fn preflight_check(
 
     let fingerprint = device.as_ref().map(|d| DeviceFingerprint::from_device(d));
 
-    Ok(SafetyReport {
+    let report = SafetyReport {
         safe_to_proceed: errors == 0,
         safety_level,
         checks,
@@ -608,7 +653,34 @@ pub async fn preflight_check(
         errors,
         warnings,
         dry_run,
-    })
+    };
+
+    // SI-1/SI-10: Postcondition — safe_to_proceed ↔ errors == 0
+    debug_assert!(
+        report.safe_to_proceed == (report.errors == 0),
+        "POSTCONDITION VIOLATED: safe_to_proceed must be true iff errors == 0"
+    );
+    // SI-10: Postcondition — error/warning counts match checks
+    debug_assert!(
+        report.errors
+            == report
+                .checks
+                .iter()
+                .filter(|c| !c.passed && c.severity == CheckSeverity::Error)
+                .count(),
+        "POSTCONDITION VIOLATED: error count must match failed error-severity checks"
+    );
+    debug_assert!(
+        report.warnings
+            == report
+                .checks
+                .iter()
+                .filter(|c| !c.passed && c.severity == CheckSeverity::Warning)
+                .count(),
+        "POSTCONDITION VIOLATED: warning count must match failed warning-severity checks"
+    );
+
+    Ok(report)
 }
 
 /// Back up the first 1 MiB of a device (contains MBR/GPT) before writing.

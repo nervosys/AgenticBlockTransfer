@@ -237,5 +237,6 @@ fn get_mount_points(name: &str) -> Result<Vec<String>> {
 
 /// Check if running as root on FreeBSD.
 pub fn is_elevated() -> bool {
+    // SAFETY: geteuid() is a simple getter with no memory safety implications.
     unsafe { libc::geteuid() == 0 }
 }

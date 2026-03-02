@@ -35,6 +35,13 @@ pub struct Args {
     /// Write log output to a file (JSON-structured, one entry per line)
     #[arg(long, global = true)]
     pub log_file: Option<String>,
+
+    /// Enable FIPS 140 compliance mode.
+    /// Restricts to FIPS-approved algorithms only (SHA-256, SHA-512).
+    /// Enforces TLS 1.2+, CSPRNG for erase, HTTPS-only downloads.
+    /// Also settable via ABT_FIPS_MODE=1 environment variable.
+    #[arg(long, global = true, env = "ABT_FIPS_MODE")]
+    pub fips: bool,
 }
 
 impl Args {
@@ -248,6 +255,10 @@ pub enum Command {
     /// Read optical disc media (CD/DVD/Blu-ray) to ISO files
     #[command(visible_alias = "disc")]
     Optical(OpticalOpts),
+
+    /// Run FIPS / CMMC 2.0 / DoD compliance self-assessment
+    #[command(visible_alias = "audit")]
+    Compliance(ComplianceOpts),
 }
 
 #[derive(Parser, Debug)]
@@ -1347,6 +1358,18 @@ pub struct OpticalOpts {
     #[arg(long)]
     pub json: bool,
 }
+
+#[derive(Parser, Debug)]
+pub struct ComplianceOpts {
+    /// Output as JSON for automated processing or SIEM integration
+    #[arg(long)]
+    pub json: bool,
+
+    /// Save audit log to the specified directory
+    #[arg(long)]
+    pub save_audit_log: Option<String>,
+}
+
 /// Parse a human-readable block size string into bytes.
 pub fn parse_block_size(s: &str) -> anyhow::Result<usize> {
     let s = s.trim().to_uppercase();

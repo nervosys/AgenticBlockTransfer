@@ -1,6 +1,6 @@
 [package]
 name = "abt"
-version = "1.6.0"
+version = "1.7.0"
 edition = "2021"
 authors = ["nervosys"]
 description = "AgenticBlockTransfer — agentic-first CLI successor to dd, human-first GUI/TUI successor to balenaEtcher, Ventoy, Rufus, Fedora Media Writer, and rpi-imager"
@@ -41,6 +41,9 @@ crc32fast = "1"
 blake3 = "1"
 hex = "0.4"
 hmac = "0.12"
+getrandom = "0.2"
+hostname = "0.4"
+whoami = "1"
 indicatif = "0.17"
 humansize = "2"
 
@@ -100,6 +103,10 @@ windows = { version = "0.59", features = [
     "Win32_System_Threading",
     "Win32_System_Power",
 ] }
+
+[dev-dependencies]
+proptest = "1"
+tempfile = "3"
 
 [profile.release]
 opt-level = 3

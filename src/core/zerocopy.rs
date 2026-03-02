@@ -223,6 +223,8 @@ fn transfer_sendfile(
         #[cfg(target_os = "macos")]
         {
             let mut len = count as i64;
+            // SAFETY: sendfile() is called with valid file descriptors obtained from
+            // std::fs::File. Error is checked immediately. No memory aliasing.
             let rc = unsafe {
                 libc::sendfile(source_fd, target_fd, offset as libc::off_t, &mut len, std::ptr::null_mut(), 0)
             };
@@ -245,6 +247,8 @@ fn transfer_sendfile(
         #[cfg(target_os = "freebsd")]
         {
             let mut sbytes: libc::off_t = 0;
+            // SAFETY: sendfile() is called with valid file descriptors obtained from
+            // std::fs::File. Error and byte count are checked immediately. No memory aliasing.
             let rc = unsafe {
                 libc::sendfile(source_fd, target_fd, offset as libc::off_t, count, std::ptr::null_mut(), &mut sbytes, 0)
             };

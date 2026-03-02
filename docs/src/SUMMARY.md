@@ -26,6 +26,7 @@
 - [Image Formats](./formats.md)
 - [Performance Tuning](./performance.md)
 - [Security](./security.md)
+- [Compliance (FIPS / CMMC / DoD)](./compliance.md)
 - [Accessibility](./accessibility.md)
 - [Localization](./localization.md)
 

@@ -244,10 +244,27 @@ Gap analysis from reference projects (rufus, etcher, MediaWriter, rpi-imager, Ve
 
 Gap analysis from reference projects (rufus, etcher, MediaWriter, rpi-imager, Ventoy).
 
-| Feature                        | Status | Notes                                                                                      |
-| ------------------------------ | ------ | ------------------------------------------------------------------------------------------ |
-| FFU Image Parser               | ✅      | Security/image/store header parsing, manifest extraction, FfuReader streaming, 9 tests     |
-| ISOHybrid Detection            | ✅      | MBR/GPT hybrid analysis, Isolinux/GRUB2/GenericMBR, write mode recommendation, 11 tests   |
-| Process Lock Detection         | ✅      | Cross-platform lock scanning (Linux /proc, macOS lsof, Windows wmic), 10 tests            |
-| Privilege Elevation            | ✅      | UAC/pkexec/sudo/osascript re-launch, status reporting, method detection, 12 tests          |
-| Optical Disc Reader            | ✅      | CD/DVD/Blu-ray reading, ISO 9660 PVD, retry/zero-fill, SHA-256 verification, 9 tests      |
+| Feature                | Status | Notes                                                                                   |
+| ---------------------- | ------ | --------------------------------------------------------------------------------------- |
+| FFU Image Parser       | ✅      | Security/image/store header parsing, manifest extraction, FfuReader streaming, 9 tests  |
+| ISOHybrid Detection    | ✅      | MBR/GPT hybrid analysis, Isolinux/GRUB2/GenericMBR, write mode recommendation, 11 tests |
+| Process Lock Detection | ✅      | Cross-platform lock scanning (Linux /proc, macOS lsof, Windows wmic), 10 tests          |
+| Privilege Elevation    | ✅      | UAC/pkexec/sudo/osascript re-launch, status reporting, method detection, 12 tests       |
+| Optical Disc Reader    | ✅      | CD/DVD/Blu-ray reading, ISO 9660 PVD, retry/zero-fill, SHA-256 verification, 9 tests    |
+## v1.7.0 — Feature Wave 16 (FIPS Compliance & Formal Verification)
+
+NIST FIPS, CMMC 2.0 Level 2, and DoD compliance hardening; formal verification of safety invariants.
+
+| Feature                        | Status | Notes                                                                                     |
+| ------------------------------ | ------ | ----------------------------------------------------------------------------------------- |
+| FIPS Compliance Module         | ✅      | FIPS 140-2/3 mode, algorithm validation gate, runtime enforcement via `--fips` / env var  |
+| SP 800-90A CSPRNG              | ✅      | `getrandom` OS CSPRNG replaces xorshift64 in FIPS mode for secure erase patterns          |
+| SP 800-88 Sanitization Records | ✅      | Certificate generation per NIST SP 800-88 Rev 1 §4.7, JSON serialization                  |
+| CMMC Audit Trail               | ✅      | HMAC-SHA256 integrity-chained event log, JSON-lines format, SIEM-ready                    |
+| FIPS Device Fingerprinting     | ✅      | SHA-256 replaces CRC32 for device tokens in FIPS mode (FIPS 180-4)                        |
+| TLS Hardening                  | ✅      | TLS 1.2 minimum, HTTPS-only URL validation in FIPS mode (SP 800-52 Rev 2)                 |
+| FIPS Algorithm Gate            | ✅      | Hash algorithm validation rejects MD5/CRC32/BLAKE3 in FIPS mode (SP 800-131A)             |
+| Compliance Self-Assessment     | ✅      | `abt compliance` command — FIPS/CMMC/DoD checklist with JSON output for auditors          |
+| Formal Verification            | ✅      | 10 Safety Invariants (SI-1 – SI-10), Kani proof harnesses, compile-time static assertions |
+| Property-Based Testing         | ✅      | 24 proptest harnesses covering safety, hashing, progress, and device enumeration          |
+| Unsafe Audit                   | ✅      | All 17 `unsafe` blocks documented with `// SAFETY:` comments per Rust API Guidelines      |

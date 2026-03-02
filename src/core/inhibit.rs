@@ -96,6 +96,8 @@ impl Drop for SleepInhibitor {
         #[cfg(target_os = "linux")]
         {
             if let Some(fd) = self._fd {
+                // SAFETY: fd is a valid file descriptor obtained from the Inhibit D-Bus call.
+                // Closing it releases the inhibitor lock. Only called once in Drop.
                 unsafe {
                     libc::close(fd);
                 }
@@ -175,6 +177,8 @@ fn windows_inhibit_sleep() -> u32 {
     };
 
     let flags = ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED;
+    // SAFETY: SetThreadExecutionState is a safe Windows API call with no memory implications.
+    // It sets the thread's power management state. The previous state is returned.
     let prev = unsafe { SetThreadExecutionState(flags) };
     log::debug!("Sleep inhibited via SetThreadExecutionState (prev={:?})", prev);
     prev.0
@@ -185,6 +189,8 @@ fn windows_inhibit_sleep() -> u32 {
 fn windows_restore_sleep(_prev: u32) {
     use windows::Win32::System::Power::{SetThreadExecutionState, ES_CONTINUOUS};
 
+    // SAFETY: SetThreadExecutionState is a safe Windows API call.
+    // ES_CONTINUOUS alone restores normal sleep behavior.
     unsafe {
         SetThreadExecutionState(ES_CONTINUOUS);
     }

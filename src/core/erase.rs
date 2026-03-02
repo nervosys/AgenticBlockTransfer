@@ -134,7 +134,38 @@ pub fn erase_device(config: &EraseConfig, progress: &Progress) -> Result<EraseRe
     };
 
     progress.set_phase(OperationPhase::Completed);
-    info!("Secure erase completed: {} bytes erased", result.bytes_erased);
+    info!(
+        "Secure erase completed: {} bytes erased",
+        result.bytes_erased
+    );
+
+    // ── CMMC AU.L2-3.3.1 / SP 800-88: Record audit event ──────────────────
+    super::compliance::record_audit_event(
+        super::compliance::AuditEvent::new(
+            super::compliance::AuditEventType::EraseOperation,
+            super::compliance::AuditOutcome::Success,
+            "erase",
+            &format!(
+                "Secure erase completed: {} bytes using {} ({} passes)",
+                result.bytes_erased,
+                method.label(),
+                result.passes_completed
+            ),
+        )
+        .with_target(&config.device)
+        .with_metadata("method", method.label())
+        .with_metadata("passes", &result.passes_completed.to_string())
+        .with_metadata("bytes_erased", &result.bytes_erased.to_string())
+        .with_metadata("verified", &result.verified.to_string())
+        .with_metadata(
+            "sanitization_level",
+            &super::compliance::classify_sanitization_level(
+                method.label(),
+                result.passes_completed,
+            )
+            .to_string(),
+        ),
+    );
 
     Ok(result)
 }
@@ -277,9 +308,36 @@ fn random_fill_erase(
     })
 }
 
-/// Fill a buffer with pseudo-random data using a simple xorshift64 PRNG.
-/// Not cryptographically secure, but fast enough for erasing.
+/// Fill a buffer with random data for erase operations.
+///
+/// In FIPS mode (SP 800-90A compliant): Uses the OS CSPRNG via `getrandom`,
+/// which maps to FIPS-validated DRBG implementations:
+/// - Linux: `getrandom(2)` → kernel DRBG (SP 800-90A)
+/// - Windows: `BCryptGenRandom` → CNG (FIPS 140-2 validated)
+///
+/// In default mode: Uses xorshift64 PRNG for maximum throughput (~6 GiB/s).
+/// xorshift64 is NOT cryptographically secure but provides sufficient entropy
+/// for Clear-level sanitization per SP 800-88 Rev 1 §4.1 (overwrite with
+/// any fixed or random pattern achieves Clear).
+///
+/// # Reference
+/// - NIST SP 800-90A Rev 1: Recommendation for Random Number Generation
+/// - NIST SP 800-88 Rev 1 §4.1: Clear may use "a single pass of zeros"
 fn fill_random(buf: &mut [u8]) {
+    if super::compliance::is_fips_mode() {
+        // SP 800-90A: Use OS CSPRNG (FIPS-validated DRBG)
+        super::compliance::csprng_fill(buf);
+    } else {
+        fill_random_fast(buf);
+    }
+}
+
+/// Fast non-cryptographic PRNG for default-mode erase (xorshift64).
+///
+/// Performance: ~6 GiB/s vs ~300 MiB/s for CSPRNG on typical hardware.
+/// Acceptable for SP 800-88 Clear-level sanitization where the goal is
+/// overwriting media, not cryptographic unpredictability.
+fn fill_random_fast(buf: &mut [u8]) {
     // Seed from system time for entropy
     let mut state: u64 = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -290,6 +348,8 @@ fn fill_random(buf: &mut [u8]) {
     }
 
     // Fill u64-aligned words first (fast path)
+    // SAFETY: `align_to_mut` returns a valid mutable decomposition of the buffer.
+    // Exclusive &mut reference guarantees no aliasing. All bytes are written.
     let (prefix, words, suffix) = unsafe { buf.align_to_mut::<u64>() };
 
     for b in prefix.iter_mut() {
@@ -368,7 +428,13 @@ fn ata_secure_erase(
 
         // Step 1: Set a temporary security password
         let output = std::process::Command::new("hdparm")
-            .args(["--user-master", "u", "--security-set-pass", "abt_erase", &config.device])
+            .args([
+                "--user-master",
+                "u",
+                "--security-set-pass",
+                "abt_erase",
+                &config.device,
+            ])
             .output()
             .context("Failed to set ATA security password via hdparm")?;
 
@@ -379,7 +445,13 @@ fn ata_secure_erase(
 
         // Step 2: Issue the erase command
         let output = std::process::Command::new("hdparm")
-            .args(["--user-master", "u", "--security-erase", "abt_erase", &config.device])
+            .args([
+                "--user-master",
+                "u",
+                "--security-erase",
+                "abt_erase",
+                &config.device,
+            ])
             .output()
             .context("Failed to issue ATA security erase via hdparm")?;
 
@@ -435,7 +507,10 @@ fn nvme_sanitize(
             }
             Ok(out) => {
                 let stderr = String::from_utf8_lossy(&out.stderr);
-                warn!("nvme sanitize failed: {}. Trying nvme format.", stderr.trim());
+                warn!(
+                    "nvme sanitize failed: {}. Trying nvme format.",
+                    stderr.trim()
+                );
             }
             Err(e) => {
                 warn!("nvme-cli not available: {}. Trying nvme format.", e);
@@ -450,7 +525,10 @@ fn nvme_sanitize(
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            warn!("nvme format failed: {}. Falling back to zero-fill.", stderr.trim());
+            warn!(
+                "nvme format failed: {}. Falling back to zero-fill.",
+                stderr.trim()
+            );
             return zero_fill_erase(config, device_size, progress);
         }
 

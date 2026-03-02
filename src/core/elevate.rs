@@ -151,6 +151,7 @@ fn is_elevated_windows() -> bool {
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 fn is_elevated_unix() -> bool {
     // On Unix, root has UID 0
+    // SAFETY: geteuid() is a simple getter with no memory safety implications.
     unsafe { libc::geteuid() == 0 }
 }
 

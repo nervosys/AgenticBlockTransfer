@@ -10,10 +10,10 @@ use super::progress::{OperationPhase, Progress};
 use super::types::{HashAlgorithm, WriteConfig};
 
 /// Maximum number of retries for transient I/O errors per block.
-const MAX_RETRIES: u32 = 3;
+pub(crate) const MAX_RETRIES: u32 = 3;
 
 /// Base delay for exponential backoff on retry.
-const RETRY_BASE_DELAY: Duration = Duration::from_millis(100);
+pub(crate) const RETRY_BASE_DELAY: Duration = Duration::from_millis(100);
 
 /// The main writer engine. Handles reading from source, optional decompression,
 /// writing to target device, hashing during write to avoid double-decompression
@@ -35,6 +35,20 @@ struct WriteResult {
 
 impl Writer {
     pub fn new(config: WriteConfig) -> Self {
+        // SI-3: Block size must be positive and sector-aligned
+        debug_assert!(
+            config.block_size > 0,
+            "PRECONDITION: block_size must be positive"
+        );
+        debug_assert!(
+            config.block_size % 512 == 0,
+            "PRECONDITION: block_size must be sector-aligned (multiple of 512)"
+        );
+        // SI-1: Target must not be empty
+        debug_assert!(
+            !config.target.is_empty(),
+            "PRECONDITION: target must not be empty"
+        );
         Self {
             config,
             progress: Progress::new(0),
@@ -47,6 +61,17 @@ impl Writer {
 
     /// Execute the write operation.
     pub async fn execute(&self) -> Result<()> {
+        // SI-3: Block size invariant must hold at execution time
+        debug_assert!(
+            self.config.block_size > 0 && self.config.block_size % 512 == 0,
+            "INVARIANT: block_size must be positive and sector-aligned at execute time"
+        );
+        // SI-1: Target must be set
+        debug_assert!(
+            !self.config.target.is_empty(),
+            "INVARIANT: target must be set at execute time"
+        );
+
         info!("Starting write operation");
         info!("  Source: {}", self.config.source);
         info!("  Target: {}", self.config.target);
@@ -144,9 +169,7 @@ impl Writer {
             let target = self.config.target.clone();
             let bytes_written = write_result.bytes_written;
             let write_hash = write_result.write_hash.clone();
-            let hash_algo = self.config
-                .hash_algorithm
-                .unwrap_or(HashAlgorithm::Blake3);
+            let hash_algo = self.config.hash_algorithm.unwrap_or(HashAlgorithm::Blake3);
             let progress = self.progress.clone();
 
             tokio::task::spawn_blocking(move || {
@@ -191,6 +214,15 @@ impl Writer {
         hash_algorithm: Option<HashAlgorithm>,
         progress: &Progress,
     ) -> Result<WriteResult> {
+        // SI-3: Block size preconditions
+        debug_assert!(block_size > 0, "PRECONDITION: block_size must be positive");
+        debug_assert!(
+            block_size <= 64 * 1024 * 1024,
+            "PRECONDITION: block_size must not exceed 64 MiB"
+        );
+        // SI-1: Target must be non-empty
+        debug_assert!(!target.is_empty(), "PRECONDITION: target must not be empty");
+
         let raw_target = open_device_for_writing(target, direct_io)?;
         let mut target_file = BufWriter::with_capacity(block_size, raw_target);
         let mut buf = vec![0u8; block_size];
@@ -199,9 +231,8 @@ impl Writer {
 
         // Inline hasher — compute hash of data as we write it so we never have
         // to re-read / re-decompress the source for verification.
-        let mut inline_hasher: Option<Box<dyn InlineHasher>> = hash_algorithm.map(|algo| {
-            create_inline_hasher(algo)
-        });
+        let mut inline_hasher: Option<Box<dyn InlineHasher>> =
+            hash_algorithm.map(|algo| create_inline_hasher(algo));
 
         loop {
             if progress.is_cancelled() {
@@ -258,6 +289,17 @@ impl Writer {
         algorithm: HashAlgorithm,
         progress: &Progress,
     ) -> Result<()> {
+        // SI-1: Target must be non-empty
+        debug_assert!(
+            !target.is_empty(),
+            "PRECONDITION: target must not be empty for verification"
+        );
+        // SI-2: If we have a hash, it should be non-empty hex
+        debug_assert!(
+            expected_hash.map_or(true, |h| !h.is_empty()),
+            "PRECONDITION: expected_hash, if provided, must be non-empty"
+        );
+
         let expected = match expected_hash {
             Some(h) => h,
             None => {
@@ -309,6 +351,8 @@ impl Writer {
 /// (processes 8 bytes per iteration instead of 1).
 fn is_block_zero(buf: &[u8]) -> bool {
     // Process in u64 chunks for ~8x throughput on aligned data
+    // SAFETY: `align_to` returns a valid decomposition (prefix, aligned, suffix) of the
+    // input byte slice. All bytes are covered exactly once. Read-only access, no aliasing.
     let (prefix, aligned, suffix) = unsafe { buf.align_to::<u64>() };
     prefix.iter().all(|&b| b == 0)
         && aligned.iter().all(|&w| w == 0)
@@ -331,6 +375,14 @@ fn read_full_block(reader: &mut dyn Read, buf: &mut [u8]) -> Result<usize> {
 
 /// Write data with exponential-backoff retry for transient I/O errors.
 fn write_with_retry(writer: &mut dyn Write, data: &[u8], max_retries: u32) -> Result<()> {
+    // SI-7: Retry bound must be reasonable
+    debug_assert!(
+        max_retries <= 10,
+        "PRECONDITION: max_retries must be bounded (≤10)"
+    );
+    // SI-2: Data must not be empty (no point retrying an empty write)
+    debug_assert!(!data.is_empty(), "PRECONDITION: data must not be empty");
+
     let mut attempt = 0;
     loop {
         match writer.write_all(data) {
@@ -360,7 +412,10 @@ fn write_with_retry(writer: &mut dyn Write, data: &[u8], max_retries: u32) -> Re
 }
 
 /// Open a device/file for writing (platform-specific).
-pub(crate) fn open_device_for_writing(path: &str, direct_io: bool) -> Result<Box<dyn WriteSeek + Send>> {
+pub(crate) fn open_device_for_writing(
+    path: &str,
+    direct_io: bool,
+) -> Result<Box<dyn WriteSeek + Send>> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::OpenOptionsExt;
@@ -409,6 +464,8 @@ pub(crate) fn sync_device(path: &str) -> Result<()> {
     #[cfg(unix)]
     {
         let _ = path;
+        // SAFETY: libc::sync() has no arguments and no memory safety implications.
+        // It flushes all kernel filesystem buffers to disk.
         unsafe {
             libc::sync();
         }
@@ -419,7 +476,10 @@ pub(crate) fn sync_device(path: &str) -> Result<()> {
         // Open the device and call FlushFileBuffers via std::fs::File::sync_all
         if let Ok(file) = std::fs::OpenOptions::new().write(true).open(path) {
             if let Err(e) = file.sync_all() {
-                warn!("FlushFileBuffers failed: {}. Data may not be fully flushed.", e);
+                warn!(
+                    "FlushFileBuffers failed: {}. Data may not be fully flushed.",
+                    e
+                );
             }
         }
     }
@@ -446,20 +506,32 @@ impl<D: Digest + Send> InlineHasher for DigestInline<D>
 where
     digest::Output<D>: std::fmt::LowerHex,
 {
-    fn update(&mut self, data: &[u8]) { self.0.update(data); }
-    fn finalize_hex(self: Box<Self>) -> String { format!("{:x}", self.0.finalize()) }
+    fn update(&mut self, data: &[u8]) {
+        self.0.update(data);
+    }
+    fn finalize_hex(self: Box<Self>) -> String {
+        format!("{:x}", self.0.finalize())
+    }
 }
 
 struct Blake3Inline(blake3::Hasher);
 impl InlineHasher for Blake3Inline {
-    fn update(&mut self, data: &[u8]) { self.0.update(data); }
-    fn finalize_hex(self: Box<Self>) -> String { self.0.finalize().to_hex().to_string() }
+    fn update(&mut self, data: &[u8]) {
+        self.0.update(data);
+    }
+    fn finalize_hex(self: Box<Self>) -> String {
+        self.0.finalize().to_hex().to_string()
+    }
 }
 
 struct Crc32Inline(crc32fast::Hasher);
 impl InlineHasher for Crc32Inline {
-    fn update(&mut self, data: &[u8]) { self.0.update(data); }
-    fn finalize_hex(self: Box<Self>) -> String { format!("{:08x}", self.0.finalize()) }
+    fn update(&mut self, data: &[u8]) {
+        self.0.update(data);
+    }
+    fn finalize_hex(self: Box<Self>) -> String {
+        format!("{:08x}", self.0.finalize())
+    }
 }
 
 fn create_inline_hasher(algo: HashAlgorithm) -> Box<dyn InlineHasher> {

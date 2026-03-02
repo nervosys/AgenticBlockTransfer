@@ -500,6 +500,7 @@ pub fn audit_privileges() -> Vec<SecurityFinding> {
 
     #[cfg(unix)]
     {
+        // SAFETY: getuid/geteuid are simple getters with no memory safety implications.
         let uid = unsafe { libc::getuid() };
         let euid = unsafe { libc::geteuid() };
 

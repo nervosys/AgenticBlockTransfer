@@ -7,7 +7,7 @@ use super::progress::Progress;
 use super::types::HashAlgorithm;
 
 /// Buffer size for hashing — 4 MiB, shared across all algorithms.
-const HASH_BUF_SIZE: usize = 4 * 1024 * 1024;
+pub(crate) const HASH_BUF_SIZE: usize = 4 * 1024 * 1024;
 
 /// Compute a checksum/hash of a file.
 pub fn hash_file(path: &Path, algorithm: HashAlgorithm, progress: &Progress) -> Result<String> {
@@ -22,11 +22,27 @@ pub fn hash_file(path: &Path, algorithm: HashAlgorithm, progress: &Progress) -> 
 /// Compute hash from a reader. Uses a single shared buffer and a unified
 /// read loop regardless of algorithm, eliminating the previous per-algorithm
 /// code duplication.
+///
+/// # FIPS Compliance
+/// In FIPS mode, validates the algorithm against FIPS 180-4 / SP 800-131A
+/// before proceeding. MD5, SHA-1, BLAKE3, and CRC32 are rejected.
+///
+/// # Safety Invariant SI-2
+/// The output hash is deterministic: calling this function twice with the same
+/// reader content and algorithm MUST produce the same hex string.
 pub fn hash_reader(
     reader: &mut dyn Read,
     algorithm: HashAlgorithm,
     progress: &Progress,
 ) -> Result<String> {
+    // FIPS 180-4 / SP 800-131A: Validate algorithm is permitted
+    super::compliance::validate_hash_algorithm(algorithm).map_err(|e| anyhow::anyhow!(e))?;
+    // SI-2: HASH_BUF_SIZE must be positive
+    debug_assert!(
+        HASH_BUF_SIZE > 0,
+        "INVARIANT: HASH_BUF_SIZE must be positive"
+    );
+
     let mut buf = vec![0u8; HASH_BUF_SIZE];
 
     // Create the appropriate hasher behind a trait object so the read loop
@@ -52,7 +68,19 @@ pub fn hash_reader(
         progress.add_bytes(n as u64);
     }
 
-    Ok(hasher.finalize_hex())
+    let result = hasher.finalize_hex();
+
+    // SI-2: Postcondition — hash output must be valid lowercase hex
+    debug_assert!(
+        !result.is_empty(),
+        "POSTCONDITION VIOLATED: hash output must not be empty"
+    );
+    debug_assert!(
+        result.chars().all(|c| c.is_ascii_hexdigit()),
+        "POSTCONDITION VIOLATED: hash output must be valid hex"
+    );
+
+    Ok(result)
 }
 
 // ── Trait-object hashing abstraction ───────────────────────────────────────────

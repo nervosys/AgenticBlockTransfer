@@ -55,6 +55,7 @@ pub fn create_device_enumerator() -> Box<dyn DeviceEnumerator> {
 pub fn is_elevated() -> bool {
     #[cfg(unix)]
     {
+        // SAFETY: geteuid() is a simple getter with no memory safety implications.
         unsafe { libc::geteuid() == 0 }
     }
     #[cfg(windows)]
