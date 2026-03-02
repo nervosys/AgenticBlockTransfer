@@ -1,0 +1,22 @@
+#!/usr/bin/make -f
+%:
+	dh $@
+
+override_dh_auto_build:
+	cargo build --release --all-features
+
+override_dh_auto_install:
+	install -Dm755 target/release/abt debian/abt/usr/bin/abt
+	# Shell completions
+	mkdir -p debian/abt/usr/share/bash-completion/completions
+	target/release/abt completions bash > debian/abt/usr/share/bash-completion/completions/abt
+	mkdir -p debian/abt/usr/share/zsh/vendor-completions
+	target/release/abt completions zsh > debian/abt/usr/share/zsh/vendor-completions/_abt
+	mkdir -p debian/abt/usr/share/fish/vendor_completions.d
+	target/release/abt completions fish > debian/abt/usr/share/fish/vendor_completions.d/abt.fish
+	# Man pages
+	mkdir -p debian/abt/usr/share/man/man1
+	target/release/abt man --output-dir debian/abt/usr/share/man/man1
+
+override_dh_auto_test:
+	cargo test --all-features

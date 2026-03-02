@@ -1,0 +1,108 @@
+[package]
+name = "abt"
+version = "1.6.0"
+edition = "2021"
+authors = ["nervosys"]
+description = "AgenticBlockTransfer — agentic-first CLI successor to dd, human-first GUI/TUI successor to balenaEtcher, Ventoy, Rufus, Fedora Media Writer, and rpi-imager"
+license = "AGPL-3.0-only"
+repository = "https://github.com/nervosys/AgenticBlockTransfer"
+keywords = ["disk", "flash", "image", "usb", "block-transfer", "dd", "agentic"]
+categories = ["command-line-utilities", "hardware-support", "filesystem"]
+
+[features]
+default = ["cli", "tui", "gui"]
+cli = []
+tui = ["dep:ratatui", "dep:crossterm"]
+gui = ["dep:eframe", "dep:egui", "dep:rfd"]
+
+[[bin]]
+name = "abt"
+path = "src/main.rs"
+
+[dependencies]
+# Core
+anyhow = "1"
+thiserror = "2"
+log = "0.4"
+env_logger = "0.11"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+async-trait = "0.1"
+futures = "0.3"
+byteorder = "1"
+bytes = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+sha2 = "0.10"
+sha1 = "0.10"
+md-5 = "0.10"
+crc32fast = "1"
+blake3 = "1"
+hex = "0.4"
+hmac = "0.12"
+indicatif = "0.17"
+humansize = "2"
+
+# Compression
+flate2 = "1"
+bzip2 = "0.5"
+xz2 = "0.1"
+zip = "2"
+zstd = "0.13"
+
+# CLI
+clap = { version = "4", features = ["derive", "env", "unicode", "wrap_help"] }
+clap_complete = "4"
+clap_mangen = "0.2"
+toml = "0.8"
+dirs = "6"
+serde_yaml = "0.9"
+
+# HTTP download
+reqwest = { version = "0.12", features = [
+    "json",
+    "stream",
+    "rustls-tls",
+], default-features = false }
+tempfile = "3"
+
+# TUI (optional)
+ratatui = { version = "0.29", optional = true }
+crossterm = { version = "0.28", optional = true }
+
+# GUI (optional)
+eframe = { version = "0.30", optional = true }
+egui = { version = "0.30", optional = true }
+rfd = { version = "0.15", optional = true }
+
+# Desktop notifications
+notify-rust = "4"
+
+# Memory-mapped I/O
+memmap2 = "0.9"
+
+# Platform
+nix = { version = "0.29", features = ["fs", "ioctl", "mount"], optional = true }
+
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.29", features = ["fs", "ioctl", "mount"] }
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Ioctl",
+    "Win32_System_IO",
+    "Win32_Security",
+    "Win32_Devices_DeviceAndDriverInstallation",
+    "Win32_System_Threading",
+    "Win32_System_Power",
+] }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

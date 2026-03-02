@@ -1,0 +1,57 @@
+# Maintainer: nervosys <https://github.com/nervosys>
+pkgname=abt
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Agentic-first CLI successor to dd; human-first GUI/TUI successor to Etcher, Rufus, Ventoy"
+arch=('x86_64' 'aarch64')
+url="https://github.com/nervosys/AgenticBlockTransfer"
+license=('MIT' 'Apache-2.0')
+depends=('gcc-libs')
+makedepends=('rust' 'cargo')
+optdepends=(
+  'gtk3: GUI support'
+)
+source=("$pkgname-$pkgver.tar.gz::https://github.com/nervosys/AgenticBlockTransfer/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('RELEASE_SHA256_PLACEHOLDER')
+
+prepare() {
+  cd "AgenticBlockTransfer-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+  cd "AgenticBlockTransfer-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  cargo build --frozen --release --all-features
+}
+
+check() {
+  cd "AgenticBlockTransfer-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo test --frozen --all-features
+}
+
+package() {
+  cd "AgenticBlockTransfer-$pkgver"
+  install -Dm755 "target/release/abt" "$pkgdir/usr/bin/abt"
+
+  # Shell completions
+  install -Dm644 /dev/null "$pkgdir/usr/share/bash-completion/completions/abt"
+  target/release/abt completions bash > "$pkgdir/usr/share/bash-completion/completions/abt"
+
+  install -Dm644 /dev/null "$pkgdir/usr/share/zsh/site-functions/_abt"
+  target/release/abt completions zsh > "$pkgdir/usr/share/zsh/site-functions/_abt"
+
+  install -Dm644 /dev/null "$pkgdir/usr/share/fish/vendor_completions.d/abt.fish"
+  target/release/abt completions fish > "$pkgdir/usr/share/fish/vendor_completions.d/abt.fish"
+
+  # Man pages
+  mkdir -p "$pkgdir/usr/share/man/man1"
+  target/release/abt man --output-dir "$pkgdir/usr/share/man/man1"
+
+  # License
+  install -Dm644 LICENSE-MIT "$pkgdir/usr/share/licenses/$pkgname/LICENSE-MIT"
+  install -Dm644 LICENSE-APACHE "$pkgdir/usr/share/licenses/$pkgname/LICENSE-APACHE"
+}

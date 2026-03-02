@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+
+PackageIdentifier: nervosys.abt
+PackageVersion: 1.0.0
+PackageLocale: en-US
+Publisher: nervosys
+PublisherUrl: https://github.com/nervosys
+PublisherSupportUrl: https://github.com/nervosys/AgenticBlockTransfer/issues
+PackageName: AgenticBlockTransfer
+PackageUrl: https://github.com/nervosys/AgenticBlockTransfer
+License: MIT OR Apache-2.0
+LicenseUrl: https://github.com/nervosys/AgenticBlockTransfer/blob/main/LICENSE-MIT
+ShortDescription: Agentic-first CLI successor to dd; human-first GUI/TUI successor to Etcher, Rufus, Ventoy
+Description: |-
+  AgenticBlockTransfer (abt) is a cross-platform disk image writer with CLI, TUI, and GUI modes.
+  It provides safe, verified block-level writes with AI-discoverable ontology, multi-format support
+  (ISO, IMG, QCOW2, VHD, VMDK, WIM), auto-decompression, device cloning, secure erase, and more.
+Tags:
+  - disk
+  - flash
+  - image
+  - usb
+  - cli
+  - block-transfer
+  - dd
+  - etcher
+  - rufus
+Installers:
+  - Architecture: x64
+    InstallerType: portable
+    InstallerUrl: https://github.com/nervosys/AgenticBlockTransfer/releases/download/v1.0.0/abt-windows-x64.exe
+    InstallerSha256: RELEASE_SHA256_PLACEHOLDER
+    Commands:
+      - abt
+  - Architecture: arm64
+    InstallerType: portable
+    InstallerUrl: https://github.com/nervosys/AgenticBlockTransfer/releases/download/v1.0.0/abt-windows-arm64.exe
+    InstallerSha256: RELEASE_SHA256_PLACEHOLDER
+    Commands:
+      - abt
+ManifestType: singleton
+ManifestVersion: 1.6.0

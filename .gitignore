@@ -1,0 +1,27 @@
+# Build artifacts
+/target/
+*.pdb
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Reference directory (third-party sources for analysis only)
+/reference/
+
+# Node (video project)
+node_modules/
+
+# Video build output
+/video/out/
+
+# Temp files
+build_errors.txt*.bak

@@ -1,0 +1,25 @@
+{
+  "name": "video",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "preview": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts AbtVideo out/abt-video.mp4",
+    "still": "remotion still src/index.ts AbtVideo out/abt-thumbnail.png --frame=30"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@remotion/cli": "4.0.431",
+    "@remotion/player": "4.0.431",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "remotion": "4.0.431",
+    "typescript": "5.9.3"
+  }
+}

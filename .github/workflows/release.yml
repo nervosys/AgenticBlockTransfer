@@ -1,0 +1,200 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g., v1.0.0)"
+        required: true
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: abt-linux-x64
+            binary: abt
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact: abt-linux-arm64
+            binary: abt
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact: abt-macos-x64
+            binary: abt
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: abt-macos-arm64
+            binary: abt
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: abt-windows-x64
+            binary: abt.exe
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }} --all-features
+
+      - name: Run tests
+        if: matrix.target != 'aarch64-unknown-linux-gnu' && matrix.target != 'aarch64-apple-darwin'
+        run: cargo test --release --target ${{ matrix.target }} --all-features
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          cd target/${{ matrix.target }}/release
+          sha256sum ${{ matrix.binary }} > ${{ matrix.binary }}.sha256
+          echo "SHA256:"
+          cat ${{ matrix.binary }}.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            target/${{ matrix.target }}/release/${{ matrix.binary }}
+            target/${{ matrix.target }}/release/${{ matrix.binary }}.sha256
+
+  sign:
+    name: Sign & Attest
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate artifact attestations
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "artifacts/**/*"
+
+      - name: Import GPG key
+        if: env.GPG_PRIVATE_KEY != ''
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          echo "GPG key imported"
+
+      - name: Sign binaries
+        if: env.GPG_PRIVATE_KEY != ''
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          for binary in artifacts/*/abt artifacts/*/abt.exe; do
+            if [ -f "$binary" ]; then
+              echo "$GPG_PASSPHRASE" | gpg --batch --yes --passphrase-fd 0 \
+                --detach-sign --armor "$binary"
+              echo "Signed: $binary"
+            fi
+          done
+
+      - name: Upload signed artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-artifacts
+          path: artifacts/
+
+  release:
+    name: Create Release
+    needs: sign
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download signed artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: signed-artifacts
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          for dir in artifacts/abt-*; do
+            name=$(basename "$dir")
+            if ls "$dir"/*.exe 1>/dev/null 2>&1; then
+              cp "$dir"/abt.exe "release/${name}.exe"
+              cp "$dir"/abt.exe.sha256 "release/${name}.exe.sha256" 2>/dev/null || true
+              cp "$dir"/abt.exe.asc "release/${name}.exe.asc" 2>/dev/null || true
+            else
+              cp "$dir"/abt "release/${name}"
+              cp "$dir"/abt.sha256 "release/${name}.sha256" 2>/dev/null || true
+              cp "$dir"/abt.asc "release/${name}.asc" 2>/dev/null || true
+            fi
+          done
+          ls -la release/
+
+      - name: Extract changelog for version
+        id: changelog
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          # Extract changelog section for this version
+          sed -n "/^## \[${VERSION}\]/,/^## \[/p" CHANGELOG.md | head -n -1 > release_notes.md || true
+          if [ ! -s release_notes.md ]; then
+            echo "Release ${TAG}" > release_notes.md
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release_notes.md
+          files: release/*
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-crates:
+    name: Publish to crates.io
+    needs: release
+    runs-on: ubuntu-latest
+    if: "!contains(github.ref_name, '-')"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Publish
+        run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
