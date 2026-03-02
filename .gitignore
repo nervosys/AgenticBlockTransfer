@@ -20,8 +20,9 @@ Desktop.ini
 # Node (video project)
 node_modules/
 
-# Video build output
-/video/out/
+# Video build intermediate files (keep final outputs)
+media/video/out/*
+!media/video/out/abt-video.mp4
 
 # Temp files
 build_errors.txt*.bak

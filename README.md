@@ -1,10 +1,18 @@
-# AgenticBlockTransfer (abt)
+<p align="center">
+  <img src="media/image/banner_logo_01.png" alt="AgenticBlockTransfer Banner" width="800"/>
+  <br/>
+  <b>A better dd for AI agents and humans for the next 50 years!</b>
+</p>
 
-**Agentic-first CLI successor to `dd`. Human-first GUI/TUI successor to balenaEtcher, Ventoy, Rufus, Fedora Media Writer, and rpi-imager.**
+**AgenticBlockTransfer** or `abt` is a cross-platform disk imaging tool that reads, writes, verifies, hashes, and formats block devices via CLI, TUI, and GUI interfaces — with native support for AI agent orchestration through JSON-LD ontology, OpenAPI, and MCP. `abt` provides both an agentic-first CLI successor to `dd` and a human-first GUI/TUI successor to balenaEtcher, Ventoy, Rufus, Fedora Media Writer, and rpi-imager.
 
-Simple. Reliable. Efficient. Fast.
+<p align="center">
+  <video src="media/video/out/abt-video.mp4" width="720" controls>
+    Your browser does not support the video tag.
+  </video>
+</p>
 
-AgenticBlockTransfer is a cross-platform disk imaging tool that reads, writes, verifies, hashes, and formats block devices via CLI, TUI, and GUI interfaces — with native support for AI agent orchestration through JSON-LD ontology, OpenAPI, and MCP.
+Simple. Reliable. Safe. Efficient. Fast.
 
 ## Heritage
 
@@ -529,6 +537,6 @@ The I/O engine is designed for production reliability on real hardware:
 
 ## License
 
-Licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](https://www.gnu.org/licenses/agpl-3.0.html). Commercial licenses are available — contact [NERVOSYS, LLC](https://nervosys.com) for details.
+Licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](https://www.gnu.org/licenses/agpl-3.0.html). Commercial licenses are available — contact [NERVOSYS, LLC](https://nervosys.ai) for details.
 
 Copyright 2026 (c) NERVOSYS, LLC
