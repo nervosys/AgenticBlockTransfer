@@ -295,6 +295,14 @@ Saves the first 1 MiB (MBR + GPT) to a timestamped file in the system temp direc
 
 ## Installation
 
+### From crates.io
+
+```bash
+cargo install abt
+```
+
+### From source
+
 Requires Rust 1.70+.
 
 ```bash
@@ -333,8 +341,21 @@ cargo build --release --no-default-features --features cli
 | `completions` | —                        | Generate shell completions                  |
 | `tui`         | —                        | Launch interactive terminal UI              |
 | `gui`         | —                        | Launch native graphical UI                  |
+| `clone`       | —                        | Block-level device-to-device copy           |
+| `erase`       | `wipe`                   | Secure erase with 6 methods                 |
+| `boot`        | —                        | Validate MBR/GPT boot sectors               |
+| `catalog`     | —                        | Browse Raspberry Pi OS catalog              |
+| `mcp`         | —                        | Start MCP server for AI agent integration   |
+| `bench`       | `benchmark`              | I/O throughput benchmarking                 |
+| `diff`        | —                        | Differential/incremental write              |
 | `multiboot`   | `ventoy`                 | Manage multi-boot USB devices               |
+| `customize`   | —                        | Generate firstrun/cloud-init configs        |
+| `cache`       | —                        | Manage image download cache                 |
+| `health`      | —                        | Drive health diagnostics                    |
+| `backup`      | —                        | Save drive to compressed image              |
+| `persist`     | —                        | Create persistent storage for live USB      |
 | `compliance`  | `audit`                  | FIPS / CMMC 2.0 / DoD compliance assessment |
+| `man`         | —                        | Generate roff man pages                     |
 
 ### Write
 
@@ -458,8 +479,10 @@ src/
 │   ├── multicast.rs     # UDP multicast imaging sender/receiver
 │   ├── multiboot.rs     # Ventoy-style multi-boot registry and GRUB config
 │   ├── i18n.rs          # Localization — 12 locales, message catalogs
-│   └── a11y.rs          # Accessibility — ARIA roles, WCAG contrast, announcements│   ├── compliance.rs    # FIPS 140, SP 800-88, CMMC 2.0 compliance engine
-│   └── verification.rs  # Formal verification harnesses, safety invariants├── platform/
+│   ├── a11y.rs          # Accessibility — ARIA roles, WCAG contrast, announcements
+│   ├── compliance.rs    # FIPS 140, SP 800-88, CMMC 2.0 compliance engine
+│   └── verification.rs  # Formal verification harnesses, safety invariants
+├── platform/
 │   ├── linux.rs         # sysfs + lsblk enumeration
 │   ├── macos.rs         # diskutil enumeration
 │   ├── windows.rs       # PowerShell Get-Disk enumeration
@@ -495,8 +518,10 @@ The I/O engine is designed for production reliability on real hardware:
 - **Retry with backoff** — transient I/O errors (EINTR, timeout, would-block) are retried up to 3× with exponential backoff
 - **Platform-correct sync** — `O_SYNC` + `O_DIRECT` on Linux; `FILE_FLAG_WRITE_THROUGH` + `FILE_FLAG_NO_BUFFERING` on Windows; `FlushFileBuffers` for Windows sync
 - **Lock-free progress** — `AtomicU8`-based operation phase tracking (no Mutex), `AtomicU64` for byte counters; fully wait-free snapshot reads
-- **Trait-based hashing** — single unified read loop for all 6 hash algorithms via `DynHasher` trait (no code duplication, no per-algorithm buffer allocation)- **Memory-mapped verification** — `memmap2::Mmap` for zero-copy hash verification on regular files; automatic fallback to buffered I/O for block devices
-- **Plugin system** — `FormatPlugin` trait allows registering custom image format handlers; `PluginRegistry` with priority-ordered lookup and 4 built-in plugins (QCOW2, VHD, VMDK, WIM)- **No shell injection** — Linux formatting uses `Command::new("mkfs.*").arg(device)` directly instead of `sh -c` with string interpolation
+- **Trait-based hashing** — single unified read loop for all 6 hash algorithms via `DynHasher` trait (no code duplication, no per-algorithm buffer allocation)
+- **Memory-mapped verification** — `memmap2::Mmap` for zero-copy hash verification on regular files; automatic fallback to buffered I/O for block devices
+- **Plugin system** — `FormatPlugin` trait allows registering custom image format handlers; `PluginRegistry` with priority-ordered lookup and 4 built-in plugins (QCOW2, VHD, VMDK, WIM)
+- **No shell injection** — Linux formatting uses `Command::new("mkfs.*").arg(device)` directly instead of `sh -c` with string interpolation
 - **SHA-1 correctness** — real SHA-1 via the `sha1` crate (previous versions silently used SHA-256 for SHA-1 requests)
 - **HTTP streaming download** — chunked streaming via `reqwest::bytes_stream()` with cancel support; no full-file memory buffering for multi-GB images
 - **Sparse write** — all-zero blocks detected via `u64`-aligned word comparison and seeked past instead of written; halves write time for partially-empty disk images
