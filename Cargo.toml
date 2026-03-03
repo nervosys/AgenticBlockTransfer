@@ -1,6 +1,6 @@
 [package]
 name = "abt"
-version = "1.7.0"
+version = "1.7.1"
 edition = "2021"
 authors = ["nervosys"]
 description = "AgenticBlockTransfer — agentic-first CLI successor to dd, human-first GUI/TUI successor to balenaEtcher, Ventoy, Rufus, Fedora Media Writer, and rpi-imager"

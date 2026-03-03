@@ -143,7 +143,6 @@ pub enum Command {
     #[command(visible_alias = "ventoy")]
     Multiboot(MultibootOpts),
 
-
     /// Apply OS customization (hostname, SSH, WiFi, users) for firstrun or cloud-init
     #[command(visible_alias = "firstrun")]
     Customize(CustomizeOpts),
@@ -602,7 +601,6 @@ pub struct MultibootOpts {
     pub json: bool,
 }
 
-
 #[derive(Parser, Debug)]
 pub struct CustomizeOpts {
     /// Action: generate, detect-wifi, detect-ssh, save-preset, load-preset
@@ -858,7 +856,6 @@ pub struct UsbInfoOpts {
     pub json: bool,
 }
 
-
 #[derive(Parser, Debug)]
 pub struct SignatureOpts {
     /// File to verify or hash
@@ -1016,8 +1013,8 @@ pub struct TelemetryOpts {
     pub file: Option<String>,
 
     /// Output file path (for export)
-    #[arg(short = 'o', long)]
-    pub output: Option<String>,
+    #[arg(long = "output-file")]
+    pub output_file: Option<String>,
 
     /// Output as JSON
     #[arg(long)]
@@ -1097,7 +1094,6 @@ pub struct SecureBootOpts {
     #[arg(long)]
     pub json: bool,
 }
-
 
 #[derive(Parser, Debug)]
 pub struct FsDetectOpts {

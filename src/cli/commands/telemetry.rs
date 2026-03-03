@@ -41,7 +41,7 @@ pub async fn execute(opts: TelemetryOpts) -> Result<()> {
             }
 
             // Export if output path provided
-            if let Some(ref out) = opts.output {
+            if let Some(ref out) = opts.output_file {
                 telemetry::export_report(&report, Path::new(out))?;
                 println!("\nExported to: {}", out);
             }
@@ -52,9 +52,9 @@ pub async fn execute(opts: TelemetryOpts) -> Result<()> {
                 .as_ref()
                 .ok_or_else(|| anyhow::anyhow!("--file is required for export"))?;
             let output = opts
-                .output
+                .output_file
                 .as_ref()
-                .ok_or_else(|| anyhow::anyhow!("--output is required for export"))?;
+                .ok_or_else(|| anyhow::anyhow!("--output-file is required for export"))?;
 
             let report = telemetry::load_report(Path::new(input))?;
             telemetry::export_report(&report, Path::new(output))?;
