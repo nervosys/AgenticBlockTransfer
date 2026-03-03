@@ -6,7 +6,7 @@ authors = ["nervosys"]
 description = "AgenticBlockTransfer — agentic-first CLI successor to dd, human-first GUI/TUI successor to balenaEtcher, Ventoy, Rufus, Fedora Media Writer, and rpi-imager"
 license = "AGPL-3.0-only"
 repository = "https://github.com/nervosys/AgenticBlockTransfer"
-keywords = ["disk", "flash", "image", "usb", "block-transfer", "dd", "agentic"]
+keywords = ["disk", "flash", "image", "usb", "block-transfer"]
 categories = ["command-line-utilities", "hardware-support", "filesystem"]
 
 [features]
