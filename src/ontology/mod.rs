@@ -166,7 +166,7 @@ pub fn build_ontology() -> ToolOntology {
 }
 
 fn build_capabilities() -> Vec<Capability> {
-    vec![
+    let mut capabilities = vec![
         Capability {
             id: "write".to_string(),
             name: "Write Image".to_string(),
@@ -833,6 +833,111 @@ fn build_capabilities() -> Vec<Capability> {
             postconditions: vec![],
             related: vec![],
         },
+    ];
+    capabilities.extend(remaining_capabilities());
+    capabilities
+}
+
+/// Build a capability from the fields that always differ, leaving the
+/// descriptive extras empty.
+///
+/// The seven capabilities above carry full parameter schemas and worked
+/// examples. These do not, and that is deliberate staging rather than an
+/// oversight: an agent's first question about a command is whether it will
+/// destroy anything and whether it needs privilege, and answering that for
+/// every command beats answering everything for a seventh of them. Parameter
+/// schemas can be filled in per command over time. What must not happen again
+/// is a command existing with no ontology entry at all, which is what
+/// `every_subcommand_is_declared` now prevents.
+#[allow(clippy::too_many_arguments)]
+fn cap(
+    id: &str,
+    name: &str,
+    description: &str,
+    category: CapabilityCategory,
+    requires_elevation: bool,
+    destructive: bool,
+    idempotent: bool,
+    preconditions: &[&str],
+) -> Capability {
+    Capability {
+        id: id.to_string(),
+        name: name.to_string(),
+        description: description.to_string(),
+        category,
+        cli_command: format!("abt {id}"),
+        parameters: vec![],
+        returns: ReturnType {
+            description: "See `abt <command> --help` for the output shape.".to_string(),
+            schema: None,
+            exit_codes: vec![
+                ExitCode {
+                    code: 0,
+                    meaning: "Success".to_string(),
+                },
+                ExitCode {
+                    code: 1,
+                    meaning: "Failure".to_string(),
+                },
+            ],
+        },
+        requires_elevation,
+        destructive,
+        idempotent,
+        examples: vec![],
+        preconditions: preconditions.iter().map(|s| s.to_string()).collect(),
+        postconditions: vec![],
+        related: vec![],
+    }
+}
+
+/// Every command that is not one of the seven fully-described capabilities.
+///
+/// Before this existed the ontology declared 7 of 48 commands, so an agent
+/// that trusted it as complete would have concluded abt cannot wipe a drive.
+fn remaining_capabilities() -> Vec<Capability> {
+    vec![
+        cap("completions", "Shell Completions", "Generate shell completions for bash, zsh, fish, or PowerShell.", CapabilityCategory::Meta, false, false, true, &[]),
+        cap("man", "Man Pages", "Generate man pages to a directory.", CapabilityCategory::Meta, false, false, true, &[]),
+        cap("tui", "Interactive TUI", "Launch interactive terminal UI mode.", CapabilityCategory::Meta, false, false, false, &["Holds the terminal until the user exits."]),
+        cap("gui", "Graphical UI", "Launch graphical UI mode.", CapabilityCategory::Meta, false, false, false, &["Holds the process until the window is closed."]),
+        cap("mcp", "MCP Server", "Start an MCP (Model Context Protocol) server so an agent can drive abt over JSON-RPC.", CapabilityCategory::Meta, false, false, false, &["Serves until stopped.", "Exposes the destructive capabilities in this ontology to whatever connects."]),
+        cap("clone", "Clone Device", "Clone a device or image to another device (block-level copy).", CapabilityCategory::DataTransfer, true, true, true, &["The target is overwritten in full."]),
+        cap("erase", "Secure Erase", "Securely erase a device by zero-fill, random overwrite, ATA secure erase, or NVMe sanitize.", CapabilityCategory::DeviceManagement, true, true, true, &["All data on the target is destroyed and is not recoverable."]),
+        cap("boot", "Validate Boot Sector", "Validate the boot sector (MBR / GPT / UEFI) of a device or image.", CapabilityCategory::Verification, true, false, true, &[]),
+        cap("catalog", "Image Catalog", "Browse the Raspberry Pi OS image catalog.", CapabilityCategory::Information, false, false, true, &[]),
+        cap("bench", "Benchmark I/O", "Benchmark I/O throughput to choose a block size and compare devices.", CapabilityCategory::Information, true, true, false, &["Declared destructive because write-throughput measurement writes to the target. A read-only benchmark does not, but the flag is the conservative one."]),
+        cap("diff", "Differential Write", "Differential write: only write blocks that differ between source and target.", CapabilityCategory::DataTransfer, true, true, true, &["The target is modified in place."]),
+        cap("multiboot", "Multi-boot USB", "Manage a multi-boot USB device: add, remove, and list ISOs, Ventoy-style.", CapabilityCategory::DeviceManagement, true, true, true, &["Adding or removing an ISO rewrites device structures."]),
+        cap("customize", "OS Customization", "Apply OS customization -- hostname, SSH, WiFi, users -- for firstrun or cloud-init.", CapabilityCategory::DeviceManagement, true, true, true, &["Writes configuration onto the target's filesystem.", "Credentials supplied here land on the device in whatever form the target OS expects."]),
+        cap("cache", "Image Cache", "Manage the local image download cache: list, verify, clean, evict.", CapabilityCategory::Meta, false, true, true, &["clean and evict delete cached images; list and verify do not."]),
+        cap("health", "Drive Health", "Check drive health: bad blocks, fake-flash detection, read test.", CapabilityCategory::Verification, true, true, true, &["The default read test is non-destructive.", "--force runs a destructive bad-block test that overwrites the device. Declared destructive because that mode exists."]),
+        cap("backup", "Back Up Drive", "Back up a drive or partition to a compressed image file.", CapabilityCategory::DataTransfer, true, false, true, &["Reads the source device; writes only the image file."]),
+        cap("persist", "Persistence Partition", "Create a persistent storage partition for a live Linux USB.", CapabilityCategory::DeviceManagement, true, true, true, &["Repartitions the target."]),
+        cap("update", "Self Update", "Check for abt updates and optionally self-update.", CapabilityCategory::Meta, true, false, false, &["Replaces the installed abt binary, which may require elevation depending on the install path."]),
+        cap("mirror", "Download Mirrors", "Manage download mirrors: probe latency, failover, metalink.", CapabilityCategory::Meta, false, false, true, &[]),
+        cap("checksum-file", "Checksum Files", "Parse and verify checksum files such as SHA256SUMS and MD5SUMS.", CapabilityCategory::Verification, false, false, true, &[]),
+        cap("usb-info", "USB Speed Info", "Show USB device speed information and write-time estimates.", CapabilityCategory::Information, true, false, true, &[]),
+        cap("signature", "Signature Verification", "Verify signed downloads using RSA PKCS#1 v1.5 signature verification.", CapabilityCategory::Verification, false, false, true, &[]),
+        cap("wue", "Windows Unattend", "Generate a Windows Unattended Setup file (unattend.xml) for automated installation.", CapabilityCategory::Meta, false, false, true, &["Any credentials placed in the answer file are stored in it."]),
+        cap("uefi-ntfs", "UEFI:NTFS Layout", "Plan a UEFI:NTFS dual-partition boot layout for large Windows images.", CapabilityCategory::DeviceManagement, false, false, true, &["Plans a layout; writing it is a separate operation."]),
+        cap("fleet", "Fleet Write", "Multi-target fleet write: flash the same image to several USB devices at once.", CapabilityCategory::DataTransfer, true, true, true, &["Every target in the fleet is overwritten in full."]),
+        cap("restore", "Factory Restore", "Restore a drive to factory state: wipe, repartition, format.", CapabilityCategory::DeviceManagement, true, true, true, &["All data on the target is destroyed."]),
+        cap("telemetry", "Performance Telemetry", "View and export performance telemetry data.", CapabilityCategory::Information, false, false, true, &[]),
+        cap("watchdog", "Write Watchdog", "Configure and test the write watchdog: stall detection and recovery.", CapabilityCategory::DeviceManagement, false, false, true, &[]),
+        cap("wim-extract", "WIM Extract", "Extract files from WIM archives (Windows installation images).", CapabilityCategory::DataTransfer, false, false, true, &["Writes extracted files to the output path."]),
+        cap("secure-boot", "Secure Boot Check", "Check Secure Boot status and verify bootloader signatures.", CapabilityCategory::Verification, false, false, true, &[]),
+        cap("fs-detect", "Filesystem Detect", "Detect filesystem type from a device or image superblock magic.", CapabilityCategory::Information, true, false, true, &[]),
+        cap("drive-scan", "Drive Scan", "Scan for attached drives with hot-plug detection.", CapabilityCategory::Information, true, false, true, &[]),
+        cap("drive-constraints", "Drive Constraints", "Validate drive compatibility and constraints for an operation.", CapabilityCategory::Information, true, false, true, &[]),
+        cap("win-to-go", "Windows To Go", "Create a Windows To Go bootable USB drive.", CapabilityCategory::DeviceManagement, true, true, true, &["The target is repartitioned and overwritten."]),
+        cap("syslinux", "Bootloader Install", "Detect, plan, and configure a Syslinux or GRUB bootloader installation.", CapabilityCategory::DeviceManagement, true, true, true, &["Detection and planning are read-only.", "Configuring writes a bootloader to the target. Declared destructive because that mode exists."]),
+        cap("ffu", "FFU Inspect", "Parse and inspect FFU (Full Flash Update) images.", CapabilityCategory::Information, false, false, true, &[]),
+        cap("iso-hybrid", "ISOHybrid Detect", "Detect ISOHybrid (MBR/GPT embedded) ISO images and recommend a write mode.", CapabilityCategory::Information, false, false, true, &[]),
+        cap("proc-lock", "Process Locks", "Detect processes holding locks on target drives.", CapabilityCategory::Information, true, false, true, &[]),
+        cap("elevate", "Privilege Elevation", "Check and manage privilege elevation.", CapabilityCategory::DeviceManagement, false, false, true, &["Reports and requests elevation; it does not itself modify a device."]),
+        cap("optical", "Optical Media", "Read optical disc media (CD/DVD/Blu-ray) to ISO files.", CapabilityCategory::DataTransfer, true, false, true, &["Reads the disc; writes only the ISO file."]),
+        cap("compliance", "Compliance Audit", "Run a FIPS / CMMC 2.0 / DoD compliance self-assessment.", CapabilityCategory::Verification, false, false, true, &[]),
     ]
 }
 
@@ -1163,4 +1268,91 @@ pub fn to_json_ld(ontology: &ToolOntology, full: bool) -> Value {
 /// Convert ontology to plain JSON (no semantic annotations).
 pub fn to_json(ontology: &ToolOntology, _full: bool) -> Value {
     serde_json::to_value(ontology).unwrap_or(json!(null))
+}
+
+#[cfg(test)]
+mod completeness {
+    use super::*;
+    use clap::CommandFactory;
+
+    /// Every command clap knows about has an ontology entry.
+    ///
+    /// Walks clap's own parsed `Command` rather than scanning text, so a
+    /// subcommand cannot be added without either declaring it here or being
+    /// exempted below with a reason.
+    ///
+    /// This test exists because the ontology once declared 7 of 48 commands
+    /// while presenting itself as the complete capability index. The 41 it
+    /// omitted included `erase`, `clone` and `restore`, so an agent trusting
+    /// it would have concluded abt cannot destroy anything.
+    #[test]
+    fn every_subcommand_is_declared() {
+        let declared: std::collections::HashSet<String> =
+            build_capabilities().into_iter().map(|c| c.id).collect();
+
+        let command = crate::cli::Args::command();
+        let missing: Vec<String> = command
+            .get_subcommands()
+            .map(|s| s.get_name().to_string())
+            .filter(|name| !declared.contains(name))
+            .collect();
+
+        assert!(
+            missing.is_empty(),
+            "these commands exist but have no ontology entry: {missing:?}"
+        );
+    }
+
+    /// The reverse: nothing is declared that cannot be run.
+    ///
+    /// Without this the ontology could drift the other way and offer an agent
+    /// a command that errors when chosen, which is worse than omitting it --
+    /// the agent has no way to tell a stale entry from a real one.
+    #[test]
+    fn nothing_declared_is_missing_from_the_cli() {
+        let command = crate::cli::Args::command();
+        let real: std::collections::HashSet<String> = command
+            .get_subcommands()
+            .map(|s| s.get_name().to_string())
+            .collect();
+
+        let phantom: Vec<String> = build_capabilities()
+            .into_iter()
+            .map(|c| c.id)
+            .filter(|id| !real.contains(id))
+            .collect();
+
+        assert!(
+            phantom.is_empty(),
+            "these ontology entries name no real command: {phantom:?}"
+        );
+    }
+
+    /// Anything that destroys data requires elevation, except where the data
+    /// destroyed is the caller's own and needs no privilege to remove.
+    ///
+    /// A destructive operation reachable without privilege is the combination
+    /// worth failing a build over, so the exemptions are listed here by name
+    /// with a reason rather than being waved through by a weaker rule.
+    #[test]
+    fn destructive_capabilities_require_elevation() {
+        // `cache clean` and `cache evict` delete downloaded images from the
+        // user's own cache directory. That is destruction -- the bytes are
+        // gone and must be re-downloaded -- but it needs no more privilege
+        // than deleting any other file the user owns. Marking it
+        // non-destructive to satisfy this rule would be the dishonest fix.
+        const EXEMPT: &[&str] = &["cache"];
+
+        let offenders: Vec<String> = build_capabilities()
+            .into_iter()
+            .filter(|c| c.destructive && !c.requires_elevation)
+            .map(|c| c.id)
+            .filter(|id| !EXEMPT.contains(&id.as_str()))
+            .collect();
+
+        assert!(
+            offenders.is_empty(),
+            "destructive without requiring elevation: {offenders:?}"
+        );
+    }
 }

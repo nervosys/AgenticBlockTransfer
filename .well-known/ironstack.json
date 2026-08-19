@@ -4,62 +4,596 @@
   "product": "AgenticBlockTransfer",
   "layer": "tools",
   "role": "Block device imaging: read, write, verify, hash, format. Agentic successor to dd; human successor to balenaEtcher/Rufus/Ventoy.",
-  "surfaces": ["cli", "tui", "gui", "mcp", "openapi", "json-ld"],
+  "surfaces": [
+    "cli",
+    "tui",
+    "gui",
+    "mcp",
+    "openapi",
+    "json-ld"
+  ],
   "ontology": {
     "command": "abt ontology --format json --full",
-    "document": "https://github.com/nervosys/AgenticBlockTransfer/ontology#",
+    "document": "src/ontology/mod.rs",
     "schema": 1
   },
   "capabilities": [
     {
-      "name": "list",
-      "description": "Enumerate available block devices with size, type, mount state, and removability.",
-      "requires_grant": false,
-      "budgeted": false,
-      "surfaces": ["cli", "tui", "gui", "mcp"]
-    },
-    {
-      "name": "info",
-      "description": "Detail one device or image file: format detection, size, partitions, and safety classification.",
-      "requires_grant": false,
-      "budgeted": false,
-      "surfaces": ["cli", "tui", "gui", "mcp"]
-    },
-    {
-      "name": "ontology",
-      "description": "Emit the machine-readable capability ontology for agent discovery.",
-      "requires_grant": false,
-      "budgeted": false,
-      "surfaces": ["cli", "mcp"]
-    },
-    {
-      "name": "checksum",
-      "description": "Compute MD5, SHA-256, SHA-512, BLAKE3, or CRC32 over a file or a whole block device.",
-      "requires_grant": false,
-      "budgeted": true,
-      "surfaces": ["cli", "tui", "gui", "mcp"]
-    },
-    {
-      "name": "verify",
-      "description": "Check that a device or file matches a source image or expected hash.",
-      "requires_grant": false,
-      "budgeted": true,
-      "surfaces": ["cli", "tui", "gui", "mcp"]
-    },
-    {
-      "name": "write",
-      "description": "Write a disk image to a target block device, decompressing gz/bz2/xz/zstd/zip in flight. Overwrites the target entirely.",
+      "name": "bench",
+      "description": "Benchmark I/O throughput to choose a block size and compare devices. Declared destructive because write-throughput measurement writes to the target. A read-only benchmark does not, but the flag is the conservative one.",
       "requires_grant": true,
       "budgeted": true,
-      "surfaces": ["cli", "tui", "gui", "mcp"]
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "cache",
+      "description": "Manage the local image download cache: list, verify, clean, evict. clean and evict delete cached images; list and verify do not.",
+      "requires_grant": true,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "clone",
+      "description": "Clone a device or image to another device (block-level copy). The target is overwritten in full.",
+      "requires_grant": true,
+      "budgeted": true,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "customize",
+      "description": "Apply OS customization -- hostname, SSH, WiFi, users -- for firstrun or cloud-init. Writes configuration onto the target's filesystem. Credentials supplied here land on the device in whatever form the target OS expects.",
+      "requires_grant": true,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "diff",
+      "description": "Differential write: only write blocks that differ between source and target. The target is modified in place.",
+      "requires_grant": true,
+      "budgeted": true,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "erase",
+      "description": "Securely erase a device by zero-fill, random overwrite, ATA secure erase, or NVMe sanitize. All data on the target is destroyed and is not recoverable.",
+      "requires_grant": true,
+      "budgeted": true,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "fleet",
+      "description": "Multi-target fleet write: flash the same image to several USB devices at once. Every target in the fleet is overwritten in full.",
+      "requires_grant": true,
+      "budgeted": true,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
     },
     {
       "name": "format",
-      "description": "Format a block device with a filesystem. Erases all existing data.",
+      "description": "Format a block device with a specified filesystem (FAT32, exFAT, NTFS, ext4, XFS, Btrfs, etc.). Erases all existing data. Device must exist Elevated privileges required",
       "requires_grant": true,
       "budgeted": false,
-      "surfaces": ["cli", "tui", "gui", "mcp"]
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "health",
+      "description": "Check drive health: bad blocks, fake-flash detection, read test. The default read test is non-destructive. --force runs a destructive bad-block test that overwrites the device. Declared destructive because that mode exists.",
+      "requires_grant": true,
+      "budgeted": true,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "multiboot",
+      "description": "Manage a multi-boot USB device: add, remove, and list ISOs, Ventoy-style. Adding or removing an ISO rewrites device structures.",
+      "requires_grant": true,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "persist",
+      "description": "Create a persistent storage partition for a live Linux USB. Repartitions the target.",
+      "requires_grant": true,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "restore",
+      "description": "Restore a drive to factory state: wipe, repartition, format. All data on the target is destroyed.",
+      "requires_grant": true,
+      "budgeted": true,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "syslinux",
+      "description": "Detect, plan, and configure a Syslinux or GRUB bootloader installation. Detection and planning are read-only. Configuring writes a bootloader to the target. Declared destructive because that mode exists.",
+      "requires_grant": true,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "win-to-go",
+      "description": "Create a Windows To Go bootable USB drive. The target is repartitioned and overwritten.",
+      "requires_grant": true,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "write",
+      "description": "Write a disk image file to a target block device. Supports automatic decompression of gz/bz2/xz/zstd/zip archives, direct I/O for optimal performance, and optional post-write verification. Source file must exist and be readable Target device must exist and not be a system drive (unless --force) Process must have elevated privileges",
+      "requires_grant": true,
+      "budgeted": true,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "backup",
+      "description": "Back up a drive or partition to a compressed image file. Reads the source device; writes only the image file.",
+      "requires_grant": true,
+      "budgeted": true,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "boot",
+      "description": "Validate the boot sector (MBR / GPT / UEFI) of a device or image.",
+      "requires_grant": true,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "catalog",
+      "description": "Browse the Raspberry Pi OS image catalog.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "checksum",
+      "description": "Compute cryptographic checksums/hashes (MD5, SHA-256, SHA-512, BLAKE3, CRC32) of files or block devices. File must exist and be readable",
+      "requires_grant": false,
+      "budgeted": true,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "checksum-file",
+      "description": "Parse and verify checksum files such as SHA256SUMS and MD5SUMS.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "completions",
+      "description": "Generate shell completions for bash, zsh, fish, or PowerShell.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "compliance",
+      "description": "Run a FIPS / CMMC 2.0 / DoD compliance self-assessment.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "drive-constraints",
+      "description": "Validate drive compatibility and constraints for an operation.",
+      "requires_grant": true,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "drive-scan",
+      "description": "Scan for attached drives with hot-plug detection.",
+      "requires_grant": true,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "elevate",
+      "description": "Check and manage privilege elevation. Reports and requests elevation; it does not itself modify a device.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "ffu",
+      "description": "Parse and inspect FFU (Full Flash Update) images.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "fs-detect",
+      "description": "Detect filesystem type from a device or image superblock magic.",
+      "requires_grant": true,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "gui",
+      "description": "Launch graphical UI mode. Holds the process until the window is closed.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "info",
+      "description": "Show detailed information about a specific device or image file, including format detection, size, partition info, and safety classification.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "iso-hybrid",
+      "description": "Detect ISOHybrid (MBR/GPT embedded) ISO images and recommend a write mode.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "list",
+      "description": "Enumerate available block devices (USB drives, SD cards, NVMe, SATA, virtual disks, etc.) with detailed metadata including size, type, mount state, and safety classification.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "man",
+      "description": "Generate man pages to a directory.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "mcp",
+      "description": "Start an MCP (Model Context Protocol) server so an agent can drive abt over JSON-RPC. Serves until stopped. Exposes the destructive capabilities in this ontology to whatever connects.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "mirror",
+      "description": "Manage download mirrors: probe latency, failover, metalink.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "ontology",
+      "description": "Export the machine-readable capability ontology as JSON-LD for AI agent discovery and integration. Enables agentic systems to understand and invoke abt operations programmatically.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "optical",
+      "description": "Read optical disc media (CD/DVD/Blu-ray) to ISO files. Reads the disc; writes only the ISO file.",
+      "requires_grant": true,
+      "budgeted": true,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "proc-lock",
+      "description": "Detect processes holding locks on target drives.",
+      "requires_grant": true,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "secure-boot",
+      "description": "Check Secure Boot status and verify bootloader signatures.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "signature",
+      "description": "Verify signed downloads using RSA PKCS#1 v1.5 signature verification.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "telemetry",
+      "description": "View and export performance telemetry data.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "tui",
+      "description": "Launch interactive terminal UI mode. Holds the terminal until the user exits.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "uefi-ntfs",
+      "description": "Plan a UEFI:NTFS dual-partition boot layout for large Windows images. Plans a layout; writing it is a separate operation.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "update",
+      "description": "Check for abt updates and optionally self-update. Replaces the installed abt binary, which may require elevation depending on the install path.",
+      "requires_grant": true,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "usb-info",
+      "description": "Show USB device speed information and write-time estimates.",
+      "requires_grant": true,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "verify",
+      "description": "Verify that a device or file matches a source image or expected hash. Useful for post-write validation or integrity checking. Either --source or --expected-hash must be provided",
+      "requires_grant": false,
+      "budgeted": true,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "watchdog",
+      "description": "Configure and test the write watchdog: stall detection and recovery.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "wim-extract",
+      "description": "Extract files from WIM archives (Windows installation images). Writes extracted files to the output path.",
+      "requires_grant": false,
+      "budgeted": true,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
+    },
+    {
+      "name": "wue",
+      "description": "Generate a Windows Unattended Setup file (unattend.xml) for automated installation. Any credentials placed in the answer file are stored in it.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": [
+        "cli",
+        "tui",
+        "gui",
+        "mcp"
+      ]
     }
   ],
-  "note": "Grants follow abt's own ontology, which declares destructive and requires_elevation per capability: write and format carry both flags and are the only two that require a grant. Budgets follow cost rather than danger, which is why they do not line up with grants. checksum and verify need no authority but read an entire device, so their cost scales with the target rather than the request; format is the reverse — a single privileged decision whose danger is that it was unauthorised, not that it was repeated. INCOMPLETE BY CONSTRUCTION: abt exposes 49 commands and its ontology declares 7, so this manifest covers 7. The 42 undeclared include destructive operations — erase, clone, restore, backup, diff, persist, multiboot, customize — and an agent must not read this manifest, or abt's ontology, as the full surface. Closing that gap is a change to abt's ontology, not to this file."
+  "note": "Every capability is derived from abt's own ontology, which declares destructive and requires_elevation per command. requires_grant is true where either holds; 48 of 48 commands are covered, because the ontology now covers all of them. An earlier version of this file recorded 7 capabilities and said so, because that was all the ontology declared -- the other 41 commands, erase and clone and restore among them, existed with no entry. That is fixed in the tool rather than papered over here, and two tests now walk clap's own command list in both directions so it cannot recur: every_subcommand_is_declared and nothing_declared_is_missing_from_the_cli. A third asserts that anything destructive requires elevation, with cache exempted by name because it deletes the caller's own downloaded images and needs no privilege to do so. Budgets are judged, not declared: they mark the commands whose cost scales with the size of the device or image being moved, hashed or verified. The many granted-but-unbudgeted commands are single privileged decisions, where the danger is that one was unauthorised rather than that many were made. The 41 newly declared capabilities carry effect flags and preconditions but not yet full parameter schemas, which the seven original ones do. That is deliberate staging: an agent's first question is whether a command destroys anything, and answering it for every command beats answering everything for a seventh of them."
 }
