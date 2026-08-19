@@ -1,0 +1,65 @@
+{
+  "ironstack": "1",
+  "id": "abt",
+  "product": "AgenticBlockTransfer",
+  "layer": "tools",
+  "role": "Block device imaging: read, write, verify, hash, format. Agentic successor to dd; human successor to balenaEtcher/Rufus/Ventoy.",
+  "surfaces": ["cli", "tui", "gui", "mcp", "openapi", "json-ld"],
+  "ontology": {
+    "command": "abt ontology --format json --full",
+    "document": "https://github.com/nervosys/AgenticBlockTransfer/ontology#",
+    "schema": 1
+  },
+  "capabilities": [
+    {
+      "name": "list",
+      "description": "Enumerate available block devices with size, type, mount state, and removability.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": ["cli", "tui", "gui", "mcp"]
+    },
+    {
+      "name": "info",
+      "description": "Detail one device or image file: format detection, size, partitions, and safety classification.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": ["cli", "tui", "gui", "mcp"]
+    },
+    {
+      "name": "ontology",
+      "description": "Emit the machine-readable capability ontology for agent discovery.",
+      "requires_grant": false,
+      "budgeted": false,
+      "surfaces": ["cli", "mcp"]
+    },
+    {
+      "name": "checksum",
+      "description": "Compute MD5, SHA-256, SHA-512, BLAKE3, or CRC32 over a file or a whole block device.",
+      "requires_grant": false,
+      "budgeted": true,
+      "surfaces": ["cli", "tui", "gui", "mcp"]
+    },
+    {
+      "name": "verify",
+      "description": "Check that a device or file matches a source image or expected hash.",
+      "requires_grant": false,
+      "budgeted": true,
+      "surfaces": ["cli", "tui", "gui", "mcp"]
+    },
+    {
+      "name": "write",
+      "description": "Write a disk image to a target block device, decompressing gz/bz2/xz/zstd/zip in flight. Overwrites the target entirely.",
+      "requires_grant": true,
+      "budgeted": true,
+      "surfaces": ["cli", "tui", "gui", "mcp"]
+    },
+    {
+      "name": "format",
+      "description": "Format a block device with a filesystem. Erases all existing data.",
+      "requires_grant": true,
+      "budgeted": false,
+      "surfaces": ["cli", "tui", "gui", "mcp"]
+    }
+  ],
+  "note": "Grants follow abt's own ontology, which declares destructive and requires_elevation per capability: write and format carry both flags and are the only two that require a grant. Budgets follow cost rather than danger, which is why they do not line up with grants. checksum and verify need no authority but read an entire device, so their cost scales with the target rather than the request; format is the reverse — a single privileged decision whose danger is that it was unauthorised, not that it was repeated. INCOMPLETE BY CONSTRUCTION: abt exposes 49 commands and its ontology declares 7, so this manifest covers 7. The 42 undeclared include destructive operations — erase, clone, restore, backup, diff, persist, multiboot, customize — and an agent must not read this manifest, or abt's ontology, as the full surface. Closing that gap is a change to abt's ontology, not to this file."
+}
