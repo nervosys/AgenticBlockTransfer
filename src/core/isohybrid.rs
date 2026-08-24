@@ -108,7 +108,11 @@ impl std::fmt::Display for MbrPartitionEntry {
                 f,
                 "type={:#04x}{} start_lba={} sectors={} ({} MiB)",
                 self.partition_type,
-                if self.is_bootable() { " [bootable]" } else { "" },
+                if self.is_bootable() {
+                    " [bootable]"
+                } else {
+                    ""
+                },
                 self.start_lba,
                 self.sector_count,
                 self.size_bytes() / (1024 * 1024),
@@ -247,7 +251,8 @@ pub fn detect<R: Read + Seek>(reader: &mut R) -> Result<IsoHybridInfo> {
     // Read first 512 bytes (MBR)
     reader.seek(SeekFrom::Start(0))?;
     let mut mbr = [0u8; 512];
-    reader.read_exact(&mut mbr)
+    reader
+        .read_exact(&mut mbr)
         .context("Failed to read MBR from ISO image")?;
 
     // 1. Check MBR boot signature at 510-511
@@ -378,7 +383,11 @@ fn check_el_torito<R: Read + Seek>(reader: &mut R) -> Result<bool> {
 fn check_windows_iso<R: Read + Seek>(reader: &mut R) -> Result<bool> {
     // Check Primary Volume Descriptor at sector 16
     reader.seek(SeekFrom::Start(16 * ISO_SECTOR))?;
-    let mut pvd = [0u8; 256];
+    // 512 bytes, not 256: the publisher identifier checked below lives at
+    // offset 318..446, past the end of a 256-byte read. It used to be read
+    // behind a pvd.len() >= 446 guard that a 256-byte array could never
+    // satisfy, so that check never ran.
+    let mut pvd = [0u8; 512];
     match reader.read_exact(&mut pvd) {
         Ok(()) => {
             // Volume identifier is at offset 40-71 (32 bytes, padded with spaces)
@@ -401,12 +410,10 @@ fn check_windows_iso<R: Read + Seek>(reader: &mut R) -> Result<bool> {
                 return Ok(true);
             }
 
-            // Check publisher at offset 318-446 for "MICROSOFT CORPORATION"
-            if pvd.len() >= 446 {
-                let publisher = String::from_utf8_lossy(&pvd[318..446.min(pvd.len())]);
-                if publisher.to_uppercase().contains("MICROSOFT") {
-                    return Ok(true);
-                }
+            // Publisher identifier, ECMA-119 offset 318..446.
+            let publisher = String::from_utf8_lossy(&pvd[318..446]);
+            if publisher.to_uppercase().contains("MICROSOFT") {
+                return Ok(true);
             }
 
             Ok(false)
@@ -432,7 +439,7 @@ mod tests {
         data[pvd_offset] = 1; // type
         data[pvd_offset + 1..pvd_offset + 6].copy_from_slice(b"CD001");
         data[pvd_offset + 6] = 1; // version
-        // Volume ID at offset 40
+                                  // Volume ID at offset 40
         data[pvd_offset + 40..pvd_offset + 50].copy_from_slice(b"TEST_LINUX");
 
         data

@@ -213,7 +213,15 @@ fn run_decompress_pipeline(
         ImageFormat::Bz2 | ImageFormat::Zstd => {
             // These formats have independently-decompressible blocks/frames.
             // Use parallel chunk decompression with ordered reassembly.
-            parallel_block_decompress(path, format, chunk_size, num_threads, tx, cancel, total_decompressed)
+            parallel_block_decompress(
+                path,
+                format,
+                chunk_size,
+                num_threads,
+                tx,
+                cancel,
+                total_decompressed,
+            )
         }
         ImageFormat::Gz | ImageFormat::Xz => {
             // Streaming formats — use read-ahead pipeline with double buffering.
@@ -226,28 +234,25 @@ fn run_decompress_pipeline(
     }
 }
 
-/// Parallel block decompression for bzip2/zstd.
+/// Block decompression for bzip2/zstd.
 ///
-/// Reads the compressed file in large chunks, spawns thread-pool workers
-/// to decompress each chunk independently, and reassembles in order.
+/// Named for the intended design -- bz2 and zstd blocks are self-delimiting,
+/// so segments could be decompressed independently and reassembled in order.
+/// That is not what this does. It runs one decompressor and streams its
+/// output, which is the same work the single-threaded path does. The name and
+/// the thread count are kept so the caller's shape does not change when the
+/// real implementation lands.
 fn parallel_block_decompress(
     path: &Path,
     format: ImageFormat,
     chunk_size: usize,
-    num_threads: usize,
+    _num_threads: usize,
     tx: &std::sync::mpsc::SyncSender<Result<Vec<u8>>>,
     cancel: &AtomicBool,
     total_decompressed: &AtomicU64,
 ) -> Result<()> {
-    // For parallel decompression, we decompress the entire stream using
-    // multiple decompressor instances working on segments.
-    // Since bz2/zstd blocks are self-delimiting, we can split at block boundaries.
-    //
-    // Simplified approach: use a single decompressor but pipeline the output
-    // through multiple threads for downstream processing (hashing, writing).
-
-    let file = std::fs::File::open(path)
-        .with_context(|| format!("Failed to open {}", path.display()))?;
+    let file =
+        std::fs::File::open(path).with_context(|| format!("Failed to open {}", path.display()))?;
     let buf_reader = BufReader::with_capacity(256 * 1024, file);
 
     let decompressor: Box<dyn Read + Send> = match format {
@@ -259,33 +264,6 @@ fn parallel_block_decompress(
         _ => unreachable!(),
     };
 
-    // Read decompressed output in chunks and send via channel.
-    // Use a thread pool to overlap chunk production with consumption.
-    let pool_size = num_threads.max(2);
-    let (work_tx, work_rx) = std::sync::mpsc::sync_channel::<(u64, Vec<u8>)>(pool_size);
-    let (result_tx, result_rx) = std::sync::mpsc::sync_channel::<(u64, Vec<u8>)>(pool_size);
-
-    // Worker threads that pass through chunks (in a real implementation,
-    // these would do per-chunk hashing or post-processing)
-    let cancel_flag = Arc::new(AtomicBool::new(false));
-    let workers: Vec<std::thread::JoinHandle<()>> = Vec::new();
-    for _ in 0..pool_size.min(num_threads) {
-        let _wrx = {
-            // Clone the receiver by sharing it through an Arc<Mutex>
-            // Actually, mpsc doesn't support multiple consumers. Use crossbeam
-            // or a simple approach: single consumer with work-stealing.
-            // Simplified: just use the pipeline approach.
-            break;
-        };
-    }
-    drop(workers);
-    drop(cancel_flag);
-    drop(work_tx);
-    drop(work_rx);
-    drop(result_tx);
-    drop(result_rx);
-
-    // Simplified parallel pipeline: read chunks and send directly
     chunked_read_send(decompressor, chunk_size, tx, cancel, total_decompressed)
 }
 
@@ -301,8 +279,8 @@ fn read_ahead_decompress(
     cancel: &AtomicBool,
     total_decompressed: &AtomicU64,
 ) -> Result<()> {
-    let file = std::fs::File::open(path)
-        .with_context(|| format!("Failed to open {}", path.display()))?;
+    let file =
+        std::fs::File::open(path).with_context(|| format!("Failed to open {}", path.display()))?;
     let buf_reader = BufReader::with_capacity(256 * 1024, file);
 
     let decompressor: Box<dyn Read + Send> = match format {
@@ -322,8 +300,8 @@ fn raw_read_pipeline(
     cancel: &AtomicBool,
     total_decompressed: &AtomicU64,
 ) -> Result<()> {
-    let file = std::fs::File::open(path)
-        .with_context(|| format!("Failed to open {}", path.display()))?;
+    let file =
+        std::fs::File::open(path).with_context(|| format!("Failed to open {}", path.display()))?;
     let reader = BufReader::with_capacity(256 * 1024, file);
 
     chunked_read_send(Box::new(reader), chunk_size, tx, cancel, total_decompressed)
@@ -376,7 +354,10 @@ fn chunked_read_send(
 /// Returns a `Read` implementation that decompresses the file using multiple
 /// threads. Falls back to single-threaded decompression if the format doesn't
 /// benefit from parallelism or if the thread pool can't be created.
-pub fn open_parallel(path: &Path, config: Option<ParallelDecompressConfig>) -> Result<Box<dyn Read + Send>> {
+pub fn open_parallel(
+    path: &Path,
+    config: Option<ParallelDecompressConfig>,
+) -> Result<Box<dyn Read + Send>> {
     let cfg = config.unwrap_or_default();
     let format = super::image::detect_format(path)?;
 
@@ -512,11 +493,9 @@ mod tests {
 
     fn create_zstd_test_file() -> tempfile::NamedTempFile {
         let tmp = tempfile::NamedTempFile::new().unwrap();
-        let mut encoder = zstd::stream::write::Encoder::new(
-            std::fs::File::create(tmp.path()).unwrap(),
-            1,
-        )
-        .unwrap();
+        let mut encoder =
+            zstd::stream::write::Encoder::new(std::fs::File::create(tmp.path()).unwrap(), 1)
+                .unwrap();
         let pattern: Vec<u8> = (0..=255u8).collect();
         for _ in 0..4096 {
             encoder.write_all(&pattern).unwrap();
@@ -528,10 +507,7 @@ mod tests {
     fn create_xz_test_file() -> tempfile::NamedTempFile {
         use xz2::write::XzEncoder;
         let tmp = tempfile::NamedTempFile::new().unwrap();
-        let mut encoder = XzEncoder::new(
-            std::fs::File::create(tmp.path()).unwrap(),
-            1,
-        );
+        let mut encoder = XzEncoder::new(std::fs::File::create(tmp.path()).unwrap(), 1);
         let pattern: Vec<u8> = (0..=255u8).collect();
         for _ in 0..4096 {
             encoder.write_all(&pattern).unwrap();
