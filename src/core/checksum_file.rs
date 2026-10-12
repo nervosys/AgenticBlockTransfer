@@ -226,10 +226,9 @@ fn parse_gnu_line(line: &str, algo_hint: Option<HashAlgorithm>) -> Option<Checks
     // GNU format uses two spaces or space+asterisk.
     let (hash, rest) = if let Some(pos) = line.find("  ") {
         (&line[..pos], line[pos + 2..].trim())
-    } else if let Some(pos) = line.find(" *") {
-        (&line[..pos], line[pos + 2..].trim())
     } else {
-        return None;
+        let pos = line.find(" *")?;
+        (&line[..pos], line[pos + 2..].trim())
     };
 
     let hash = hash.trim().to_lowercase();
@@ -474,7 +473,7 @@ mod tests {
 
     #[test]
     fn test_as_map() {
-        let content = "aaaa  file1.iso\nbbbb  file2.iso";
+        let _content = "aaaa  file1.iso\nbbbb  file2.iso";
         // These are not valid hex for known algos but we can use short hashes
         let content = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  file1.iso\n\
                         a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2  file2.iso";

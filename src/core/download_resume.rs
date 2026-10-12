@@ -319,6 +319,7 @@ pub async fn download_with_resume(
 }
 
 /// Download a chunk (or the full file) starting from `offset`.
+#[allow(clippy::too_many_arguments)]
 async fn download_chunk(
     client: &reqwest::Client,
     url: &str,

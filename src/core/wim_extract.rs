@@ -14,11 +14,10 @@
 #![allow(dead_code)]
 
 use anyhow::{bail, Context, Result};
-use log::{debug, error, info, warn};
+use log::{debug, info};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::io::{Read, Seek, SeekFrom};
-use std::path::{Path, PathBuf};
+use std::io::Read;
+use std::path::Path;
 
 /// WIM compression type (from header flags).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -800,7 +799,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.txt");
         std::fs::write(&path, b"hello world").unwrap();
-        assert_eq!(is_wim_file(&path).unwrap(), false);
+        assert!(!is_wim_file(&path).unwrap());
     }
 
     #[test]
@@ -811,7 +810,7 @@ mod tests {
         data.extend_from_slice(WIM_MAGIC);
         data.extend_from_slice(&[0u8; 100]);
         std::fs::write(&path, &data).unwrap();
-        assert_eq!(is_wim_file(&path).unwrap(), true);
+        assert!(is_wim_file(&path).unwrap());
     }
 
     #[test]

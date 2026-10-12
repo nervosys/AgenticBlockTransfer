@@ -310,7 +310,7 @@ fn extract_tag_content(line: &str, tag: &str) -> Option<String> {
     let open_end = line.find('>')?;
     let close_pattern = format!("</{}>", tag);
     let close_start = line.find(&close_pattern)?;
-    if open_end + 1 <= close_start {
+    if open_end < close_start {
         Some(line[open_end + 1..close_start].to_string())
     } else {
         None

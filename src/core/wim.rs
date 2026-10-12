@@ -234,7 +234,9 @@ impl WimHeader {
         if buf.len() >= 2 && buf[0] == 0xFF && buf[1] == 0xFE {
             // UTF-16LE BOM
             let u16_data: Vec<u16> = buf[2..]
-                .chunks_exact(2)
+                .as_chunks::<2>()
+                .0
+                .iter()
                 .map(|c| u16::from_le_bytes([c[0], c[1]]))
                 .collect();
             Ok(Some(String::from_utf16_lossy(&u16_data)))

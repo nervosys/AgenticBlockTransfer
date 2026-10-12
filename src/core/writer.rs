@@ -42,7 +42,7 @@ impl Writer {
             "PRECONDITION: block_size must be positive"
         );
         debug_assert!(
-            config.block_size % 512 == 0,
+            config.block_size.is_multiple_of(512),
             "PRECONDITION: block_size must be sector-aligned (multiple of 512)"
         );
         // SI-1: Target must not be empty
@@ -64,7 +64,7 @@ impl Writer {
     pub async fn execute(&self) -> Result<()> {
         // SI-3: Block size invariant must hold at execution time
         debug_assert!(
-            self.config.block_size > 0 && self.config.block_size % 512 == 0,
+            self.config.block_size > 0 && self.config.block_size.is_multiple_of(512),
             "INVARIANT: block_size must be positive and sector-aligned at execute time"
         );
         // SI-1: Target must be set
@@ -205,6 +205,7 @@ impl Writer {
     /// written. This is equivalent to `dd conv=sparse` and can dramatically
     /// speed up images with large empty regions (e.g. freshly partitioned
     /// disk images where only the first and last few MB are non-zero).
+    #[allow(clippy::too_many_arguments)]
     fn write_blocks(
         mut reader: Box<dyn Read + Send>,
         target: &str,
@@ -233,7 +234,7 @@ impl Writer {
         // Inline hasher — compute hash of data as we write it so we never have
         // to re-read / re-decompress the source for verification.
         let mut inline_hasher: Option<Box<dyn InlineHasher>> =
-            hash_algorithm.map(|algo| create_inline_hasher(algo));
+            hash_algorithm.map(create_inline_hasher);
 
         loop {
             if progress.is_cancelled() {
@@ -297,7 +298,7 @@ impl Writer {
         );
         // SI-2: If we have a hash, it should be non-empty hex
         debug_assert!(
-            expected_hash.map_or(true, |h| !h.is_empty()),
+            expected_hash.is_none_or(|h| !h.is_empty()),
             "PRECONDITION: expected_hash, if provided, must be non-empty"
         );
 

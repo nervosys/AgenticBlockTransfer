@@ -88,7 +88,8 @@ impl PluginRegistry {
     pub fn register(&mut self, plugin: Arc<dyn FormatPlugin>) {
         self.plugins.push(plugin);
         // Sort by priority (descending — higher priority first)
-        self.plugins.sort_by(|a, b| b.priority().cmp(&a.priority()));
+        self.plugins
+            .sort_by_key(|p| std::cmp::Reverse(p.priority()));
     }
 
     /// Find the first plugin that can handle the given format + magic bytes.

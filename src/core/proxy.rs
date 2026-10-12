@@ -272,7 +272,7 @@ impl NetworkConfig {
 
                 // Configure no-proxy
                 if !proxy_config.no_proxy.is_empty() {
-                    std::env::set_var("NO_PROXY", &proxy_config.no_proxy.join(","));
+                    std::env::set_var("NO_PROXY", proxy_config.no_proxy.join(","));
                     builder = builder.no_proxy();
                 }
             } else {

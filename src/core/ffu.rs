@@ -159,7 +159,9 @@ impl FfuImageHeader {
         let manifest = String::from_utf8(manifest_bytes.clone()).unwrap_or_else(|_| {
             // Try UTF-16LE
             let words: Vec<u16> = manifest_bytes
-                .chunks_exact(2)
+                .as_chunks::<2>()
+                .0
+                .iter()
                 .map(|c| u16::from_le_bytes([c[0], c[1]]))
                 .collect();
             String::from_utf16_lossy(&words)
@@ -533,7 +535,7 @@ impl<R: Read + Seek> Read for FfuReader<R> {
                 let file_offset = self.payload_file_offset + file_payload_offset + offset_in_entry;
                 self.inner
                     .seek(SeekFrom::Start(file_offset))
-                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+                    .map_err(io::Error::other)?;
 
                 let n = self.inner.read(&mut buf[..to_read])?;
                 self.disk_pos += n as u64;
@@ -677,7 +679,7 @@ mod tests {
         buf.resize(aligned, 0);
 
         // Payload: one block of 128 KiB with pattern
-        let payload_start = buf.len();
+        let _payload_start = buf.len();
         for i in 0..(128 * 1024) {
             buf.push((i % 256) as u8);
         }

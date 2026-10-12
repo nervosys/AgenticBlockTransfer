@@ -119,8 +119,8 @@ impl BackupResult {
     /// Format the result as human-readable text.
     pub fn format_text(&self) -> String {
         let mut out = String::new();
-        out.push_str(&format!("Backup Complete\n"));
-        out.push_str(&format!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"));
+        out.push_str("Backup Complete\n");
+        out.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
         out.push_str(&format!("Source:       {}\n", self.source));
         out.push_str(&format!("Output:       {}\n", self.output));
         out.push_str(&format!("Compression:  {}\n", self.compression));

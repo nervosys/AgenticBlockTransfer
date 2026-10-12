@@ -705,8 +705,10 @@ mod tests {
 
     #[test]
     fn test_generate_unattend_xml_product_key() {
-        let mut config = UnattendConfig::default();
-        config.product_key = Some("XXXXX-XXXXX-XXXXX-XXXXX-XXXXX".into());
+        let config = UnattendConfig {
+            product_key: Some("XXXXX-XXXXX-XXXXX-XXXXX-XXXXX".into()),
+            ..Default::default()
+        };
         let xml = generate_unattend_xml(&config);
         assert!(xml.contains("<ProductKey>XXXXX-XXXXX-XXXXX-XXXXX-XXXXX</ProductKey>"));
     }
@@ -738,8 +740,10 @@ mod tests {
 
     #[test]
     fn test_generate_unattend_xml_arch() {
-        let mut config = UnattendConfig::default();
-        config.arch = WindowsArch::Arm64;
+        let config = UnattendConfig {
+            arch: WindowsArch::Arm64,
+            ..Default::default()
+        };
         let xml = generate_unattend_xml(&config);
         assert!(xml.contains("processorArchitecture=\"arm64\""));
     }

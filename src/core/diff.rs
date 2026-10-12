@@ -324,7 +324,7 @@ pub fn format_diff_result(result: &DiffWriteResult) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+
     use tempfile::NamedTempFile;
 
     fn create_test_file(data: &[u8]) -> NamedTempFile {
@@ -398,10 +398,10 @@ mod tests {
     fn test_diff_write_partial_change() {
         // First block identical, second block different
         let mut source_data = vec![0xAAu8; 8192];
-        let mut target_data = vec![0xAAu8; 8192];
+        let target_data = vec![0xAAu8; 8192];
         // Change only the second block in source
-        for i in 4096..8192 {
-            source_data[i] = 0xCC;
+        for b in &mut source_data[4096..8192] {
+            *b = 0xCC;
         }
 
         let source = create_test_file(&source_data);

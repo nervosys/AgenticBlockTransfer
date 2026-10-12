@@ -3,7 +3,6 @@
 // like system drive protection, minimum/recommended size, source drive exclusion,
 // and locked/read-only detection. Inspired by Etcher's drive-constraints module.
 
-use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::path::Path;

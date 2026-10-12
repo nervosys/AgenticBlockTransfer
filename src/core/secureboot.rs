@@ -13,10 +13,10 @@
 
 #![allow(dead_code)]
 
-use anyhow::{bail, Context, Result};
-use log::{debug, error, info, warn};
+use anyhow::{bail, Result};
+use log::debug;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// Secure Boot state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -155,7 +155,7 @@ pub fn detect_firmware_mode() -> FirmwareMode {
     {
         // On Windows, we can check if GetFirmwareType returns UefiFirmwareType.
         // For now, assume UEFI if the system is modern.
-        return FirmwareMode::Uefi;
+        FirmwareMode::Uefi
     }
 
     #[cfg(target_os = "macos")]
@@ -574,7 +574,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.efi");
         std::fs::write(&path, b"not a PE file at all!").unwrap();
-        assert_eq!(is_likely_signed(&path).unwrap(), false);
+        assert!(!is_likely_signed(&path).unwrap());
     }
 
     #[test]
@@ -587,7 +587,7 @@ mod tests {
         data[0x3C] = 0x80; // PE offset points to 0x80
                            // No PE signature at 0x80
         std::fs::write(&path, &data).unwrap();
-        assert_eq!(is_likely_signed(&path).unwrap(), false);
+        assert!(!is_likely_signed(&path).unwrap());
     }
 
     #[test]
@@ -612,7 +612,7 @@ mod tests {
         // Certificate table at optional header offset 144: 0x98+144 = 0x128
         // All zeros = not signed
         std::fs::write(&path, &data).unwrap();
-        assert_eq!(is_likely_signed(&path).unwrap(), false);
+        assert!(!is_likely_signed(&path).unwrap());
     }
 
     #[test]

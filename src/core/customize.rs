@@ -124,7 +124,7 @@ impl fmt::Display for CustomizationFormat {
 }
 
 /// Full OS customization specification.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct OsCustomization {
     pub hostname: Option<String>,
     pub users: Vec<UserAccount>,
@@ -134,21 +134,6 @@ pub struct OsCustomization {
     pub packages: Vec<String>,
     pub run_commands: Vec<String>,
     pub extra_files: HashMap<String, String>,
-}
-
-impl Default for OsCustomization {
-    fn default() -> Self {
-        Self {
-            hostname: None,
-            users: Vec::new(),
-            ssh: None,
-            wifi: None,
-            locale: None,
-            packages: Vec::new(),
-            run_commands: Vec::new(),
-            extra_files: HashMap::new(),
-        }
-    }
 }
 
 impl OsCustomization {
@@ -196,7 +181,7 @@ impl OsCustomization {
         // Hostname
         if let Some(ref hostname) = self.hostname {
             validate_hostname(hostname)?;
-            script.push_str(&format!("# Set hostname\n"));
+            script.push_str("# Set hostname\n");
             script.push_str(&format!("echo '{}' > /etc/hostname\n", hostname));
             script.push_str(&format!(
                 "sed -i 's/127\\.0\\.1\\.1.*/127.0.1.1\\t{}/' /etc/hosts\n",
@@ -398,12 +383,9 @@ impl OsCustomization {
                     }
                 }
                 yaml.push_str(&format!("    shell: {}\n", user.shell));
-                if user.password_hash.is_some() {
+                if let Some(hash) = &user.password_hash {
                     yaml.push_str("    lock_passwd: false\n");
-                    yaml.push_str(&format!(
-                        "    passwd: {}\n",
-                        user.password_hash.as_ref().unwrap()
-                    ));
+                    yaml.push_str(&format!("    passwd: {}\n", hash));
                 }
                 if !user.ssh_authorized_keys.is_empty() {
                     yaml.push_str("    ssh_authorized_keys:\n");
@@ -506,11 +488,11 @@ impl OsCustomization {
 
     /// Generate all customization files and return them as (filename, content) pairs.
     pub fn generate_all(&self) -> Result<Vec<(String, String)>> {
-        let mut files = Vec::new();
-        files.push(("firstrun.sh".into(), self.generate_firstrun_script()?));
-        files.push(("user-data".into(), self.generate_cloud_init()?));
-        files.push(("network-config".into(), self.generate_network_config()?));
-        Ok(files)
+        Ok(vec![
+            ("firstrun.sh".into(), self.generate_firstrun_script()?),
+            ("user-data".into(), self.generate_cloud_init()?),
+            ("network-config".into(), self.generate_network_config()?),
+        ])
     }
 
     /// Write customization files to a directory.

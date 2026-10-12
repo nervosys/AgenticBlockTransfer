@@ -41,12 +41,10 @@ pub enum Locale {
 
 impl Locale {
     /// Parse a locale string (e.g., "en_US.UTF-8" → En).
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Self {
         let lower = s.to_lowercase();
-        let code = lower
-            .split(|c| c == '_' || c == '-' || c == '.')
-            .next()
-            .unwrap_or("en");
+        let code = lower.split(['_', '-', '.']).next().unwrap_or("en");
         match code {
             "de" => Self::De,
             "fr" => Self::Fr,
@@ -122,6 +120,12 @@ impl Locale {
 pub struct MessageCatalog {
     locale: Locale,
     messages: HashMap<Locale, HashMap<String, String>>,
+}
+
+impl Default for MessageCatalog {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl MessageCatalog {

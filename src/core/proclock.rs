@@ -15,9 +15,8 @@
 
 #![allow(dead_code)]
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -404,7 +403,7 @@ fn scan_macos(target: &str, config: &LockScanConfig, result: &mut LockScanResult
 // ─── Windows Implementation ────────────────────────────────────────────────
 
 #[cfg(target_os = "windows")]
-fn scan_windows(target: &str, config: &LockScanConfig, result: &mut LockScanResult) -> Result<()> {
+fn scan_windows(target: &str, _config: &LockScanConfig, result: &mut LockScanResult) -> Result<()> {
     // On Windows, we use a simpler approach: check if we can open the device
     // exclusively. If not, something else has it. We also enumerate volumes
     // on the physical disk and check their mount status.
@@ -413,7 +412,7 @@ fn scan_windows(target: &str, config: &LockScanConfig, result: &mut LockScanResu
     // Try handle.exe / openfiles approach
     // Check mount points for volumes on this physical disk
     let output = Command::new("cmd")
-        .args(&[
+        .args([
             "/c",
             "wmic",
             "logicaldisk",
@@ -452,10 +451,8 @@ fn scan_windows(target: &str, config: &LockScanConfig, result: &mut LockScanResu
 
     // Try to detect explorer.exe and other processes using Process list
     let output2 = Command::new("powershell")
-        .args(&["-NoProfile", "-Command",
-            &format!(
-                "Get-Process | Where-Object {{ $_.Path -ne $null }} | Select-Object Id,ProcessName | Format-Table -AutoSize"
-            )
+        .args(["-NoProfile", "-Command",
+            "Get-Process | Where-Object { $_.Path -ne $null } | Select-Object Id,ProcessName | Format-Table -AutoSize"
         ])
         .output();
 

@@ -172,6 +172,8 @@ struct Theme {
     text_secondary: egui::Color32,
     text_muted: egui::Color32,
     border: egui::Color32,
+    // Palette value kept for theme completeness; no widget reads it yet.
+    #[allow(dead_code)]
     border_glow: egui::Color32,
     selection: egui::Color32,
 }
@@ -189,7 +191,7 @@ impl Theme {
 
         // Selection
         visuals.selection.bg_fill = self.selection.linear_multiply(0.3);
-        visuals.selection.stroke = egui::Stroke::new(1.5, self.selection);
+        visuals.selection.stroke = egui::Stroke::new(1.5_f32, self.selection);
 
         // Hyperlinks
         visuals.hyperlink_color = self.accent;
@@ -202,40 +204,40 @@ impl Theme {
             spread: 2.0,
             color: egui::Color32::from_black_alpha(120),
         };
-        visuals.window_stroke = egui::Stroke::new(1.0, self.border);
+        visuals.window_stroke = egui::Stroke::new(1.0_f32, self.border);
 
         // Widget styling — inactive
         visuals.widgets.inactive.bg_fill = self.bg_card;
-        visuals.widgets.inactive.bg_stroke = egui::Stroke::new(1.0, self.border);
-        visuals.widgets.inactive.fg_stroke = egui::Stroke::new(1.0, self.text_secondary);
+        visuals.widgets.inactive.bg_stroke = egui::Stroke::new(1.0_f32, self.border);
+        visuals.widgets.inactive.fg_stroke = egui::Stroke::new(1.0_f32, self.text_secondary);
         visuals.widgets.inactive.rounding = egui::Rounding::same(6.0);
 
         // Widget styling — hovered
         visuals.widgets.hovered.bg_fill = self.bg_card_hover;
-        visuals.widgets.hovered.bg_stroke = egui::Stroke::new(1.5, self.accent_dim);
-        visuals.widgets.hovered.fg_stroke = egui::Stroke::new(1.0, self.text_primary);
+        visuals.widgets.hovered.bg_stroke = egui::Stroke::new(1.5_f32, self.accent_dim);
+        visuals.widgets.hovered.fg_stroke = egui::Stroke::new(1.0_f32, self.text_primary);
         visuals.widgets.hovered.rounding = egui::Rounding::same(6.0);
 
         // Widget styling — active (pressed)
         visuals.widgets.active.bg_fill = self.accent.linear_multiply(0.2);
-        visuals.widgets.active.bg_stroke = egui::Stroke::new(2.0, self.accent);
-        visuals.widgets.active.fg_stroke = egui::Stroke::new(1.0, self.accent);
+        visuals.widgets.active.bg_stroke = egui::Stroke::new(2.0_f32, self.accent);
+        visuals.widgets.active.fg_stroke = egui::Stroke::new(1.0_f32, self.accent);
         visuals.widgets.active.rounding = egui::Rounding::same(6.0);
 
         // Widget styling — open (popups/menus)
         visuals.widgets.open.bg_fill = self.bg_card;
-        visuals.widgets.open.bg_stroke = egui::Stroke::new(1.0, self.accent_dim);
-        visuals.widgets.open.fg_stroke = egui::Stroke::new(1.0, self.text_primary);
+        visuals.widgets.open.bg_stroke = egui::Stroke::new(1.0_f32, self.accent_dim);
+        visuals.widgets.open.fg_stroke = egui::Stroke::new(1.0_f32, self.text_primary);
         visuals.widgets.open.rounding = egui::Rounding::same(6.0);
 
         // Non-interactive elements
         visuals.widgets.noninteractive.bg_fill = self.bg_panel;
-        visuals.widgets.noninteractive.bg_stroke = egui::Stroke::new(1.0, self.border);
-        visuals.widgets.noninteractive.fg_stroke = egui::Stroke::new(1.0, self.text_secondary);
+        visuals.widgets.noninteractive.bg_stroke = egui::Stroke::new(1.0_f32, self.border);
+        visuals.widgets.noninteractive.fg_stroke = egui::Stroke::new(1.0_f32, self.text_secondary);
         visuals.widgets.noninteractive.rounding = egui::Rounding::same(6.0);
 
         // Separator
-        visuals.widgets.noninteractive.bg_stroke = egui::Stroke::new(0.5, self.border);
+        visuals.widgets.noninteractive.bg_stroke = egui::Stroke::new(0.5_f32, self.border);
 
         // Popup shadow
         visuals.popup_shadow = egui::epaint::Shadow {
@@ -333,7 +335,7 @@ impl eframe::App for AbtApp {
             let t = ctx.input(|i| i.time) as f32;
             let pulse = ((t * 3.0).sin() * 0.3 + 0.7).clamp(0.4, 1.0);
             let glow = self.theme.accent.linear_multiply(pulse);
-            painter.rect_stroke(screen.shrink(8.0), 12.0, egui::Stroke::new(3.0, glow));
+            painter.rect_stroke(screen.shrink(8.0), 12.0, egui::Stroke::new(3.0_f32, glow));
 
             // Drop icon and text
             painter.text(
@@ -381,7 +383,7 @@ impl eframe::App for AbtApp {
                 egui::Frame::default()
                     .fill(self.theme.bg_deep)
                     .inner_margin(egui::Margin::symmetric(16.0, 6.0))
-                    .stroke(egui::Stroke::new(1.0, self.theme.border)),
+                    .stroke(egui::Stroke::new(1.0_f32, self.theme.border)),
             )
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
@@ -482,7 +484,7 @@ impl eframe::App for AbtApp {
                 egui::Frame::default()
                     .fill(self.theme.bg_deep)
                     .inner_margin(egui::Margin::symmetric(16.0, 4.0))
-                    .stroke(egui::Stroke::new(1.0, self.theme.border)),
+                    .stroke(egui::Stroke::new(1.0_f32, self.theme.border)),
             )
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
@@ -544,7 +546,7 @@ fn card_frame(theme: &Theme, glow_accent: bool) -> egui::Frame {
         .fill(theme.bg_card)
         .rounding(egui::Rounding::same(8.0))
         .inner_margin(egui::Margin::same(14.0))
-        .stroke(egui::Stroke::new(1.0, stroke_color))
+        .stroke(egui::Stroke::new(1.0_f32, stroke_color))
 }
 
 /// Styled section heading with an icon badge and accent underline.
@@ -596,7 +598,7 @@ impl AbtApp {
                     rect,
                     egui::Rounding::same(6.0),
                     bg,
-                    egui::Stroke::new(1.0, border_color),
+                    egui::Stroke::new(1.0_f32, border_color),
                 );
                 ui.painter().text(
                     egui::pos2(rect.center().x, rect.center().y - 10.0),
@@ -841,7 +843,7 @@ impl AbtApp {
                                     .rounding(egui::Rounding::same(6.0))
                                     .inner_margin(egui::Margin::symmetric(10.0, 6.0))
                                     .stroke(egui::Stroke::new(
-                                        if selected { 1.5 } else { 0.5 },
+                                        if selected { 1.5 } else { 0.5_f32 },
                                         card_border,
                                     ));
 
@@ -994,7 +996,7 @@ impl AbtApp {
             })
             .rounding(egui::Rounding::same(8.0))
             .stroke(egui::Stroke::new(
-                if can_write { 1.5 } else { 0.5 },
+                if can_write { 1.5 } else { 0.5_f32 },
                 btn_color,
             ))
             .min_size(egui::vec2(240.0, 44.0));
@@ -1056,7 +1058,7 @@ impl AbtApp {
         ui.painter().rect_stroke(
             bar_rect,
             bar_height / 2.0,
-            egui::Stroke::new(1.0, self.theme.border),
+            egui::Stroke::new(1.0_f32, self.theme.border),
         );
 
         // Filled portion
@@ -1166,7 +1168,7 @@ impl AbtApp {
             )
             .rounding(egui::Rounding::same(6.0))
             .stroke(egui::Stroke::new(
-                1.0,
+                1.0_f32,
                 self.theme.error.linear_multiply(0.5),
             ));
 
@@ -1212,7 +1214,7 @@ impl AbtApp {
                     .strong(),
             )
             .rounding(egui::Rounding::same(8.0))
-            .stroke(egui::Stroke::new(1.0, self.theme.accent_dim))
+            .stroke(egui::Stroke::new(1.0_f32, self.theme.accent_dim))
             .min_size(egui::vec2(180.0, 38.0));
 
             if ui.add(again_btn).clicked() {
@@ -1256,7 +1258,7 @@ impl AbtApp {
                     .strong(),
             )
             .rounding(egui::Rounding::same(8.0))
-            .stroke(egui::Stroke::new(1.0, self.theme.accent_dim))
+            .stroke(egui::Stroke::new(1.0_f32, self.theme.accent_dim))
             .min_size(egui::vec2(160.0, 38.0));
 
             if ui.add(retry_btn).clicked() {

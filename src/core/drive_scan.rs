@@ -568,7 +568,7 @@ mod tests {
 
         // Now replace adapter with empty one to simulate removal
         // Since we can't replace, we'll test via state manipulation
-        let mut state = scanner.state.lock().unwrap();
+        let state = scanner.state.lock().unwrap();
         assert_eq!(state.devices.len(), 1);
         drop(state);
     }

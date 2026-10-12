@@ -20,7 +20,7 @@ pub async fn execute(opts: CacheOpts) -> Result<()> {
             if opts.json {
                 println!("{}", serde_json::to_string_pretty(&entries)?);
             } else {
-                println!("{:<60} {:>10} {}", "URL", "Size", "Cached At");
+                println!("{:<60} {:>10} Cached At", "URL", "Size");
                 println!("{}", "-".repeat(90));
                 for entry in &entries {
                     let size = humansize::format_size(entry.size, humansize::BINARY);
@@ -32,7 +32,7 @@ pub async fn execute(opts: CacheOpts) -> Result<()> {
                     } else {
                         entry.url.clone()
                     };
-                    println!("{:<60} {:>10} {}", url_display, size, &date);
+                    println!("{:<60} {:>10} {}", url_display, size, date);
                 }
                 println!("\n{} entries", entries.len());
             }

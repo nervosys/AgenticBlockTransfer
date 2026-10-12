@@ -16,7 +16,7 @@
 #![allow(dead_code)]
 
 use anyhow::{bail, Context, Result};
-use std::io::{self, Read, Seek, SeekFrom, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
 // ─── Constants ─────────────────────────────────────────────────────────────
@@ -301,7 +301,7 @@ pub fn detect_drives() -> Result<Vec<String>> {
         // Also check drive letters
         for letter in b'D'..=b'Z' {
             let path = format!("{}:\\", letter as char);
-            let drive_path = format!("\\\\.\\{}:", letter as char);
+            let _drive_path = format!("\\\\.\\{}:", letter as char);
             // On Windows, we'd use GetDriveTypeW to check — simplified here
             if Path::new(&path).exists() {
                 // Check if it's an optical drive (heuristic — check for disc)

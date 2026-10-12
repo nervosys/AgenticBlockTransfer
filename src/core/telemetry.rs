@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::sync::{OnceLock, RwLock};
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, Instant};
 
 /// Which phase is currently the bottleneck.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -785,8 +785,7 @@ fn build_cloudwatch_payload(events: &[UsageTelemetryEvent]) -> String {
         ));
         params.push(format!("MetricData.member.{}.Unit=Count", idx));
 
-        let mut dim_idx = 1;
-        for (k, v) in &event.dimensions {
+        for (dim_idx, (k, v)) in (1..).zip(event.dimensions.iter()) {
             params.push(format!(
                 "MetricData.member.{}.Dimensions.member.{}.Name={}",
                 idx, dim_idx, k
@@ -795,7 +794,6 @@ fn build_cloudwatch_payload(events: &[UsageTelemetryEvent]) -> String {
                 "MetricData.member.{}.Dimensions.member.{}.Value={}",
                 idx, dim_idx, v
             ));
-            dim_idx += 1;
         }
     }
 

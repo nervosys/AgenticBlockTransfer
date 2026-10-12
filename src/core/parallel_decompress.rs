@@ -181,7 +181,7 @@ impl Read for ParallelDecompressReader {
                     // Loop back to serve from this chunk
                 }
                 Ok(Err(e)) => {
-                    return Err(std::io::Error::new(std::io::ErrorKind::Other, e));
+                    return Err(std::io::Error::other(e));
                 }
                 Err(_) => {
                     // Channel closed — EOF

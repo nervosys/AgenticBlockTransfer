@@ -368,7 +368,7 @@ impl CatalogRegistry {
         for entry in std::fs::read_dir(cache_dir)? {
             let entry = entry?;
             let path = entry.path();
-            if path.extension().map_or(false, |ext| ext == "json") {
+            if path.extension().is_some_and(|ext| ext == "json") {
                 match std::fs::read_to_string(&path) {
                     Ok(content) => match serde_json::from_str::<ProviderCatalog>(&content) {
                         Ok(catalog) => {
@@ -424,11 +424,7 @@ pub async fn fetch_catalog(
 
     // Try rpi-imager format (has "os_list" at top level)
     if let Ok(rpi) = serde_json::from_str::<RpiImagerCatalog>(&body) {
-        let entries = rpi
-            .os_list
-            .into_iter()
-            .map(|e| convert_rpi_entry(e))
-            .collect();
+        let entries = rpi.os_list.into_iter().map(convert_rpi_entry).collect();
         return Ok(ProviderCatalog {
             provider,
             display_name: display_name.to_string(),
@@ -488,11 +484,7 @@ fn convert_rpi_entry(rpi: RpiImagerEntry) -> CatalogEntry {
         .map(|d| HardwareTag::Device(d.clone()))
         .collect();
 
-    let children: Vec<CatalogEntry> = rpi
-        .subitems
-        .into_iter()
-        .map(|e| convert_rpi_entry(e))
-        .collect();
+    let children: Vec<CatalogEntry> = rpi.subitems.into_iter().map(convert_rpi_entry).collect();
 
     CatalogEntry {
         id: slug(&rpi.name),

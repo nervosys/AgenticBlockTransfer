@@ -16,10 +16,9 @@
 
 #![allow(dead_code)]
 
-use anyhow::{bail, Context, Result};
-use log::{debug, error, info, warn};
+use anyhow::{bail, Result};
+use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 /// Partition table type to create on the restored device.
@@ -735,7 +734,7 @@ mod tests {
         };
         let plan = plan_restore(&cfg).unwrap();
         // Should have a warning about FAT32 on large drives
-        assert!(plan.warnings.len() >= 1);
+        assert!(!plan.warnings.is_empty());
     }
 
     #[test]
@@ -747,7 +746,7 @@ mod tests {
             label: "TEST".into(),
             ..Default::default()
         };
-        let cmds = describe_restore_commands(&cfg, 16 * 1024 * 1024 * 1024);
+        let _cmds = describe_restore_commands(&cfg, 16 * 1024 * 1024 * 1024);
         // On any platform, commands should be non-empty
         // (compiled for the current target)
         #[cfg(target_os = "linux")]

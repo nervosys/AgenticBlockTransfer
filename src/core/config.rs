@@ -121,17 +121,10 @@ impl Default for OutputConfig {
 /// Logging configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+#[derive(Default)]
 pub struct LoggingConfig {
     /// Path to log file (empty = disabled).
     pub log_file: String,
-}
-
-impl Default for LoggingConfig {
-    fn default() -> Self {
-        Self {
-            log_file: String::new(),
-        }
-    }
 }
 
 impl Config {

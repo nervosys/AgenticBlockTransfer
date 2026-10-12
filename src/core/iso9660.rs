@@ -283,7 +283,7 @@ fn parse_boot_record(buf: &[u8; 2048], info: &mut Iso9660Info) {
 fn read_strA(buf: &[u8], offset: usize, len: usize) -> String {
     let slice = &buf[offset..offset + len];
     String::from_utf8_lossy(slice)
-        .trim_end_matches(|c: char| c == ' ' || c == '\0')
+        .trim_end_matches([' ', '\0'])
         .to_string()
 }
 

@@ -322,7 +322,7 @@ fn extract_ascii_string(buf: &[u8], offset: usize, len: usize) -> Option<String>
     let s: String = slice
         .iter()
         .map(|&b| {
-            if b >= 0x20 && b < 0x7F {
+            if (0x20..0x7F).contains(&b) {
                 b as char
             } else {
                 ' '
@@ -461,8 +461,7 @@ fn try_detect_fat(buf: &[u8], len: usize) -> Option<FsDetectResult> {
     let bytes_per_sector = read_le_u16(buf, 0x0B);
     if bytes_per_sector == 0
         || !bytes_per_sector.is_power_of_two()
-        || bytes_per_sector < 512
-        || bytes_per_sector > 4096
+        || !(512..=4096).contains(&bytes_per_sector)
     {
         return None;
     }
@@ -496,8 +495,7 @@ fn try_detect_fat(buf: &[u8], len: usize) -> Option<FsDetectResult> {
         fat_size_32 as u64
     };
 
-    let root_dir_sectors =
-        ((root_entry_count as u64 * 32) + (bytes_per_sector as u64 - 1)) / bytes_per_sector as u64;
+    let root_dir_sectors = (root_entry_count as u64 * 32).div_ceil(bytes_per_sector as u64);
     let data_sectors = total_sectors
         .saturating_sub(reserved_sectors as u64)
         .saturating_sub(num_fats as u64 * fat_size)

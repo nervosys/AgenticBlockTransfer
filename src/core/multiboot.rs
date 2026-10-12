@@ -695,7 +695,7 @@ mod tests {
 
         let iso_tmp = tempfile::tempdir().unwrap();
         let iso_path = iso_tmp.path().join("test.iso");
-        std::fs::write(&iso_path, &[0u8; 1024]).unwrap();
+        std::fs::write(&iso_path, [0u8; 1024]).unwrap();
 
         add_image(tmp.path(), &iso_path, None).unwrap();
         let result = add_image(tmp.path(), &iso_path, None);

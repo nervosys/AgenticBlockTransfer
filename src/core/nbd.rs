@@ -250,7 +250,7 @@ impl NbdReader {
             self.stream.read_exact(&mut reply_hdr)?;
 
             let reply_magic = u64::from_be_bytes(reply_hdr[0..8].try_into().unwrap());
-            if reply_magic != 0x0003_e889_045565_a9u64 {
+            if reply_magic != 0x0003_e889_0455_65a9u64 {
                 // Not a valid reply magic — might be old protocol
                 debug!("NBD_OPT_GO not supported, falling back to EXPORT_NAME");
                 return Ok(false);
@@ -414,7 +414,7 @@ impl Read for NbdReader {
 
         let n = self
             .read_block(self.offset, request_len)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| io::Error::other(e.to_string()))?;
 
         self.offset += n as u64;
         self.buf_len = n;

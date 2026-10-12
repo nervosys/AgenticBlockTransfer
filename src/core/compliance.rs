@@ -1203,7 +1203,7 @@ mod tests {
     #[test]
     fn test_audit_chain_integrity() {
         // Record two events and verify they have different integrity hashes
-        let count_before = audit_event_count();
+        let _count_before = audit_event_count();
         record_audit_event(AuditEvent::new(
             AuditEventType::ComplianceEvent,
             AuditOutcome::Success,

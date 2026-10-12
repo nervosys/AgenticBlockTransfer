@@ -19,9 +19,11 @@ use super::types::ImageSource;
 /// explicit confirmation before proceeding.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum SafetyLevel {
     /// Minimal checks — equivalent to dd with a seatbelt.
     /// Still blocks system drive writes unless --force.
+    #[default]
     Low,
     /// Recommended for agent use. All Low checks plus:
     /// - Requires removable media or explicit device confirmation token
@@ -35,12 +37,6 @@ pub enum SafetyLevel {
     /// - Refuses to write to any non-removable device
     /// - Logs full operation plan to file before executing
     High,
-}
-
-impl Default for SafetyLevel {
-    fn default() -> Self {
-        Self::Low
-    }
 }
 
 impl std::fmt::Display for SafetyLevel {
@@ -392,7 +388,7 @@ pub async fn preflight_check(
         }
         Err(e) => {
             // Check if it's a regular file path (non-device target)
-            let is_file_path = Path::new(target).parent().map_or(false, |p| p.exists());
+            let is_file_path = Path::new(target).parent().is_some_and(|p| p.exists());
             if is_file_path {
                 checks.push(SafetyCheck {
                     id: "target_exists".into(),
@@ -522,11 +518,7 @@ pub async fn preflight_check(
                                 "Image {} ≤ Device {} ({}% of device)",
                                 humansize::format_size(image_size, humansize::BINARY),
                                 humansize::format_size(dev.size, humansize::BINARY),
-                                if dev.size > 0 {
-                                    image_size * 100 / dev.size
-                                } else {
-                                    0
-                                }
+                                (image_size * 100).checked_div(dev.size).unwrap_or(0)
                             )
                         } else {
                             format!(
@@ -624,7 +616,7 @@ pub async fn preflight_check(
         .filter(|c| !c.passed && c.severity == CheckSeverity::Warning)
         .count();
 
-    let fingerprint = device.as_ref().map(|d| DeviceFingerprint::from_device(d));
+    let fingerprint = device.as_ref().map(DeviceFingerprint::from_device);
 
     let report = SafetyReport {
         safe_to_proceed: errors == 0,

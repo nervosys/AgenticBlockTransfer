@@ -11,6 +11,12 @@ impl WindowsDeviceEnumerator {
     }
 }
 
+impl Default for WindowsDeviceEnumerator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait::async_trait]
 impl DeviceEnumerator for WindowsDeviceEnumerator {
     async fn list_devices(&self) -> Result<Vec<DeviceInfo>> {

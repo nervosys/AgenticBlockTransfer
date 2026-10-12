@@ -218,7 +218,7 @@ pub fn available_cluster_sizes(total_bytes: u64) -> Vec<(ClusterSize, bool)> {
             let bytes = cs.bytes() as u64;
             // Cluster must be >= sector size and produce < 2^28 clusters
             let clusters = total_bytes / bytes;
-            clusters >= 65525 && clusters < 0x0FFFFFF7 && bytes >= 512
+            (65525..0x0FFFFFF7).contains(&clusters) && bytes >= 512
         })
         .map(|&cs| (cs, cs == auto))
         .collect()
@@ -253,7 +253,7 @@ pub fn calculate_fat32_params(opts: &Fat32FormatOpts) -> Result<Fat32FormatResul
     // For FAT32, RootDirSectors = 0
     let tmp_val1 = total_sectors - reserved_sectors as u32;
     let tmp_val2 = (128 * num_fats as u32) + sectors_per_cluster;
-    let fat_size_sectors = (tmp_val1 + tmp_val2 - 1) / tmp_val2;
+    let fat_size_sectors = tmp_val1.div_ceil(tmp_val2);
 
     // Total data sectors
     let data_sectors =
@@ -272,8 +272,8 @@ pub fn calculate_fat32_params(opts: &Fat32FormatOpts) -> Result<Fat32FormatResul
 
     // Generate volume serial number (based on date/time like DOS)
     let now = chrono::Utc::now();
-    let volume_serial = ((now.timestamp() & 0xFFFF) as u32) << 16
-        | ((now.timestamp_subsec_millis() & 0xFFFF) as u32);
+    let volume_serial =
+        ((now.timestamp() & 0xFFFF) as u32) << 16 | (now.timestamp_subsec_millis() & 0xFFFF);
 
     let data_capacity = total_clusters as u64 * cluster_bytes as u64;
 

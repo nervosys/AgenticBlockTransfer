@@ -220,8 +220,8 @@ mod tests {
             .read_to_end(&mut data)
             .unwrap();
         // First 256 bytes should be 0..=255
-        for i in 0..256 {
-            assert_eq!(data[i], i as u8);
+        for (i, &b) in data.iter().enumerate().take(256) {
+            assert_eq!(b, i as u8);
         }
         // Next 256 should repeat
         for i in 0..256 {

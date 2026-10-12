@@ -17,7 +17,7 @@
 
 #![allow(dead_code)]
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use std::env;
 use std::path::PathBuf;
 
@@ -330,7 +330,7 @@ fn elevate_uac() -> Result<ElevationResult> {
 
     // Use PowerShell Start-Process -Verb RunAs for UAC elevation
     let status = Command::new("powershell")
-        .args(&[
+        .args([
             "-NoProfile",
             "-Command",
             &format!(

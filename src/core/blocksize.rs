@@ -346,7 +346,7 @@ mod tests {
 
     #[test]
     fn min_leq_max() {
-        assert!(MIN_BLOCK_SIZE <= MAX_BLOCK_SIZE);
+        const _: () = assert!(MIN_BLOCK_SIZE <= MAX_BLOCK_SIZE);
     }
 
     #[test]

@@ -315,7 +315,7 @@ mod tests {
     #[test]
     fn test_write_fallback_basic() {
         let data: Vec<u8> = (0..8192).map(|i| (i % 256) as u8).collect();
-        let reader: Box<dyn Read + Send> = Box::new(std::io::Cursor::new(data.clone()));
+        let _reader: Box<dyn Read + Send> = Box::new(std::io::Cursor::new(data.clone()));
         let tmp = NamedTempFile::new().unwrap();
 
         let config = UringConfig {

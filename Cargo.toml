@@ -105,6 +105,10 @@ windows = { version = "0.59", features = [
 proptest = "1"
 tempfile = "3"
 
+[lints.rust]
+# `cfg(kani)` gates the Kani proof harnesses, which only exist under `cargo kani`.
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
+
 [profile.release]
 opt-level = 3
 lto = true

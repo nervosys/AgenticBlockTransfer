@@ -6,8 +6,6 @@
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::io::{Read, Seek, SeekFrom};
-use std::path::{Path, PathBuf};
 
 /// Supported bootloader types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -558,13 +556,13 @@ pub fn plan_installation(bootloader: BootloaderType, target_fs: &str) -> Result<
                 ));
             }
         }
-        BootloaderType::Extlinux => {
-            if !matches!(fs_lower.as_str(), "ext2" | "ext3" | "ext4" | "btrfs") {
-                return Err(anyhow!(
-                    "EXTLINUX only supports ext2/3/4 and btrfs, not {}",
-                    target_fs
-                ));
-            }
+        BootloaderType::Extlinux
+            if !matches!(fs_lower.as_str(), "ext2" | "ext3" | "ext4" | "btrfs") =>
+        {
+            return Err(anyhow!(
+                "EXTLINUX only supports ext2/3/4 and btrfs, not {}",
+                target_fs
+            ));
         }
         _ => {} // GRUB2 and others support most filesystems
     }

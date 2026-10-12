@@ -567,6 +567,12 @@ impl McpServer {
     }
 }
 
+impl Default for McpServer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 // ─── Server entry point ────────────────────────────────────────────────────
 
 /// Run the MCP server, reading JSON-RPC messages from stdin and writing

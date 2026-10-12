@@ -322,8 +322,8 @@ mod tests {
         img[1] = 0x5A; // JMP +0x5A
 
         // Some boot code
-        for i in 2..446 {
-            img[i] = 0x90; // NOP sled
+        for b in &mut img[2..446] {
+            *b = 0x90; // NOP sled
         }
 
         // One partition entry (type 0x0C = FAT32 LBA)
@@ -436,8 +436,8 @@ mod tests {
         let mut img = create_gpt_image();
         // Add boot code to make it hybrid
         img[0] = 0xEB; // JMP
-        for i in 2..446 {
-            img[i] = 0x90; // NOP
+        for b in &mut img[2..446] {
+            *b = 0x90; // NOP
         }
 
         let mut tmp = NamedTempFile::new().unwrap();

@@ -110,7 +110,7 @@ impl App {
 
             let path = entry.path();
             let meta = entry.metadata().ok();
-            let is_dir = meta.as_ref().map_or(false, |m| m.is_dir());
+            let is_dir = meta.as_ref().is_some_and(|m| m.is_dir());
             let size = meta.as_ref().map_or(0, |m| m.len());
 
             if is_dir {
@@ -139,8 +139,8 @@ impl App {
         }
 
         // Sort alphabetically (case-insensitive)
-        dirs.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
-        files.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+        dirs.sort_by_key(|a| a.name.to_lowercase());
+        files.sort_by_key(|a| a.name.to_lowercase());
 
         // Directories first, then image files
         self.browser_entries.extend(dirs);
@@ -316,15 +316,13 @@ fn handle_device_select(app: &mut App, key: KeyCode) {
                 app.selected_device += 1;
             }
         }
-        KeyCode::Enter => {
-            if !app.devices.is_empty() {
-                let dev = &app.devices[app.selected_device];
-                if dev.is_system {
-                    app.status_message = "Cannot write to system drive!".to_string();
-                } else {
-                    app.state = AppState::Confirm;
-                    app.status_message = "Press 'y' to confirm, 'n' to go back".to_string();
-                }
+        KeyCode::Enter if !app.devices.is_empty() => {
+            let dev = &app.devices[app.selected_device];
+            if dev.is_system {
+                app.status_message = "Cannot write to system drive!".to_string();
+            } else {
+                app.state = AppState::Confirm;
+                app.status_message = "Press 'y' to confirm, 'n' to go back".to_string();
             }
         }
         _ => {}

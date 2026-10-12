@@ -220,7 +220,7 @@ pub fn send_image(
 
     let total_size = image_data.len() as u64;
     let chunk_size = config.chunk_size.min(MAX_CHUNK_DATA);
-    let total_chunks = (total_size + chunk_size as u64 - 1) / chunk_size as u64;
+    let total_chunks = total_size.div_ceil(chunk_size as u64);
 
     // Create UDP socket
     let socket = UdpSocket::bind(SocketAddr::new(config.bind_addr.into(), 0))
@@ -539,8 +539,8 @@ mod tests {
 
     #[test]
     fn test_max_chunk_data_fits_mtu() {
-        assert!(MAX_CHUNK_DATA + CHUNK_HEADER_SIZE <= MAX_PAYLOAD);
-        assert!(MAX_PAYLOAD <= 1400);
+        const _: () = assert!(MAX_CHUNK_DATA + CHUNK_HEADER_SIZE <= MAX_PAYLOAD);
+        const _: () = assert!(MAX_PAYLOAD <= 1400);
     }
 
     #[test]

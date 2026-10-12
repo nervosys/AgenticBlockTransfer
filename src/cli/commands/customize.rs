@@ -16,18 +16,20 @@ pub async fn execute(opts: CustomizeOpts) -> Result<()> {
             }
 
             if let Some(username) = &opts.username {
-                let mut user = UserAccount::default();
-                user.username = username.clone();
-                if let Some(pw) = &opts.password {
-                    user.password_hash = Some(pw.clone());
-                }
+                let user = UserAccount {
+                    username: username.clone(),
+                    password_hash: opts.password.clone(),
+                    ..Default::default()
+                };
                 customization.users.push(user);
             }
 
             if opts.enable_ssh || opts.ssh_key.is_some() {
-                let mut ssh = SshConfig::default();
-                ssh.enable = true;
-                ssh.password_auth = opts.enable_ssh;
+                let mut ssh = SshConfig {
+                    enable: true,
+                    password_auth: opts.enable_ssh,
+                    ..Default::default()
+                };
                 if let Some(key) = &opts.ssh_key {
                     ssh.authorized_keys = vec![key.clone()];
                 }

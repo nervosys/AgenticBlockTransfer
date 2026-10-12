@@ -158,7 +158,7 @@ impl HealthReport {
     pub fn format_text(&self) -> String {
         let mut out = String::new();
         out.push_str(&format!("Drive Health Report: {}\n", self.device));
-        out.push_str(&format!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"));
+        out.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
         out.push_str(&format!(
             "Size tested:    {} ({} bytes)\n",
             humansize::format_size(self.total_size, humansize::BINARY),
@@ -179,13 +179,13 @@ impl HealthReport {
             "Read speed:     {}/s\n",
             humansize::format_size(self.avg_read_speed as u64, humansize::BINARY)
         ));
-        out.push_str(&format!("\n"));
+        out.push('\n');
         out.push_str(&format!("Write errors:       {}\n", self.write_errors));
         out.push_str(&format!("Read errors:        {}\n", self.read_errors));
         out.push_str(&format!("Corruption errors:  {}\n", self.corruption_errors));
         out.push_str(&format!("Bad blocks:         {}\n", self.bad_blocks.len()));
         if self.fake_drive_detected {
-            out.push_str(&format!("\n⚠ COUNTERFEIT DRIVE DETECTED!\n"));
+            out.push_str("\n⚠ COUNTERFEIT DRIVE DETECTED!\n");
             if let Some(actual) = self.actual_usable_size {
                 out.push_str(&format!(
                     "  Reported size: {}, actual usable: {}\n",
@@ -249,7 +249,7 @@ where
 
     let (test_start, test_size) = config.test_region.unwrap_or((0, size));
 
-    let total_blocks = (test_size + block_size as u64 - 1) / block_size as u64;
+    let total_blocks = test_size.div_ceil(block_size as u64);
 
     let mut bad_blocks = Vec::new();
     let mut write_errors: u64 = 0;

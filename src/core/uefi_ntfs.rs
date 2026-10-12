@@ -263,11 +263,8 @@ pub fn calculate_uefi_ntfs_layout(
     let data_offset = align_up(esp_offset + esp_size, PARTITION_ALIGNMENT);
     let data_size = disk_size - data_offset - PARTITION_ALIGNMENT; // leave room at end
 
-    let data_type_guid = if windows_to_go {
-        "EBD0A0A2-B9E5-4433-87C0-68B6B72699C7".into() // Microsoft Basic Data
-    } else {
-        "EBD0A0A2-B9E5-4433-87C0-68B6B72699C7".into() // Microsoft Basic Data
-    };
+    // Microsoft Basic Data.
+    let data_type_guid = "EBD0A0A2-B9E5-4433-87C0-68B6B72699C7".into();
 
     partitions.push(PartitionInfo {
         index: 1,
@@ -416,7 +413,7 @@ impl EspContents {
 
 /// Align a value up to the given alignment boundary.
 fn align_up(value: u64, alignment: u64) -> u64 {
-    (value + alignment - 1) / alignment * alignment
+    value.div_ceil(alignment) * alignment
 }
 
 /// Format a byte count for display.

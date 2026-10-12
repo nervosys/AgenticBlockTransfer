@@ -40,7 +40,7 @@ pub fn hash_reader(
     // FIPS 180-4 / SP 800-131A: Validate algorithm is permitted
     super::compliance::validate_hash_algorithm(algorithm).map_err(|e| anyhow::anyhow!(e))?;
     // SI-2: HASH_BUF_SIZE must be positive
-    debug_assert!(
+    const _: () = assert!(
         HASH_BUF_SIZE > 0,
         "INVARIANT: HASH_BUF_SIZE must be positive"
     );

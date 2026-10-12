@@ -86,7 +86,7 @@ mod tests {
         fn detect_by_extension_iso() {
             let f = NamedTempFile::with_suffix(".iso").unwrap();
             // Write some non-magic bytes — should fall back to extension
-            std::fs::write(f.path(), &[0u8; 16]).unwrap();
+            std::fs::write(f.path(), [0u8; 16]).unwrap();
             let fmt = detect_format(f.path()).unwrap();
             assert_eq!(fmt, ImageFormat::Iso);
         }
@@ -94,7 +94,7 @@ mod tests {
         #[test]
         fn detect_by_extension_img() {
             let f = NamedTempFile::with_suffix(".img").unwrap();
-            std::fs::write(f.path(), &[0u8; 16]).unwrap();
+            std::fs::write(f.path(), [0u8; 16]).unwrap();
             let fmt = detect_format(f.path()).unwrap();
             assert_eq!(fmt, ImageFormat::Img);
         }
@@ -102,7 +102,7 @@ mod tests {
         #[test]
         fn detect_by_extension_raw() {
             let f = NamedTempFile::with_suffix(".raw").unwrap();
-            std::fs::write(f.path(), &[0u8; 16]).unwrap();
+            std::fs::write(f.path(), [0u8; 16]).unwrap();
             let fmt = detect_format(f.path()).unwrap();
             assert_eq!(fmt, ImageFormat::Raw);
         }
@@ -121,7 +121,7 @@ mod tests {
         #[test]
         fn unknown_format_errors() {
             let f = NamedTempFile::with_suffix(".unknown_ext_xyz").unwrap();
-            std::fs::write(f.path(), &[0u8; 16]).unwrap();
+            std::fs::write(f.path(), [0u8; 16]).unwrap();
             assert!(detect_format(f.path()).is_err());
         }
 

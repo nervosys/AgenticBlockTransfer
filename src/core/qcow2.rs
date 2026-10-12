@@ -294,7 +294,7 @@ impl<R: Read + Seek> Read for Qcow2Reader<R> {
 
         let n = self
             .read_cluster_data(self.pos, &mut buf[..to_read])
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            .map_err(io::Error::other)?;
 
         self.pos += n as u64;
         Ok(n)

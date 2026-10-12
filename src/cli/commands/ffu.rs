@@ -1,5 +1,4 @@
 use anyhow::Result;
-use std::io::Cursor;
 
 use crate::cli::FfuOpts;
 use crate::core::ffu;

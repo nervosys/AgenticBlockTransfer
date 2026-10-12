@@ -122,13 +122,10 @@ impl ImageCache {
 
     /// Check if a URL is cached and the cached file is valid.
     pub fn lookup(&self, url: &str) -> Option<&CacheEntry> {
-        self.manifest.entries.get(url).and_then(|entry| {
-            if entry.local_path.exists() {
-                Some(entry)
-            } else {
-                None
-            }
-        })
+        self.manifest
+            .entries
+            .get(url)
+            .filter(|&entry| entry.local_path.exists())
     }
 
     /// Get the local path for a cached URL, if available and verified.

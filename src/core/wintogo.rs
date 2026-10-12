@@ -6,8 +6,8 @@
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::io::{Read, Seek, SeekFrom};
-use std::path::{Path, PathBuf};
+use std::io::Read;
+use std::path::Path;
 
 /// Windows edition compatibility with Windows To Go.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -496,7 +496,7 @@ fn extract_ascii_string(buf: &[u8], offset: usize, len: usize) -> Option<String>
     let s: String = slice
         .iter()
         .map(|&b| {
-            if b >= 0x20 && b < 0x7F {
+            if (0x20..0x7F).contains(&b) {
                 b as char
             } else {
                 ' '

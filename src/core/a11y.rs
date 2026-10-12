@@ -531,14 +531,20 @@ impl AnnouncementQueue {
 
     /// Drain all pending announcements, sorted by priority.
     pub fn drain(&mut self) -> Vec<Announcement> {
-        let mut items: Vec<_> = self.queue.drain(..).collect();
-        items.sort_by(|a, b| b.priority.cmp(&a.priority));
+        let mut items: Vec<_> = std::mem::take(&mut self.queue);
+        items.sort_by_key(|a| std::cmp::Reverse(a.priority));
         items
     }
 
     /// Whether there are pending announcements.
     pub fn is_empty(&self) -> bool {
         self.queue.is_empty()
+    }
+}
+
+impl Default for AnnouncementQueue {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
