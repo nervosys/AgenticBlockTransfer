@@ -76,24 +76,26 @@ impl Qcow2Header {
         let snapshots_offset = reader.read_u64::<BigEndian>()?;
 
         // v3 extended fields (default to 0 for v2)
-        let (incompatible_features, compatible_features, autoclear_features, refcount_order, header_length) =
-            if version >= 3 {
-                let inc = reader.read_u64::<BigEndian>()?;
-                let com = reader.read_u64::<BigEndian>()?;
-                let aut = reader.read_u64::<BigEndian>()?;
-                let rco = reader.read_u32::<BigEndian>()?;
-                let hlen = reader.read_u32::<BigEndian>()?;
-                (inc, com, aut, rco, hlen)
-            } else {
-                (0, 0, 0, 4, 72) // v2 header is 72 bytes
-            };
+        let (
+            incompatible_features,
+            compatible_features,
+            autoclear_features,
+            refcount_order,
+            header_length,
+        ) = if version >= 3 {
+            let inc = reader.read_u64::<BigEndian>()?;
+            let com = reader.read_u64::<BigEndian>()?;
+            let aut = reader.read_u64::<BigEndian>()?;
+            let rco = reader.read_u32::<BigEndian>()?;
+            let hlen = reader.read_u32::<BigEndian>()?;
+            (inc, com, aut, rco, hlen)
+        } else {
+            (0, 0, 0, 4, 72) // v2 header is 72 bytes
+        };
 
         // Validate cluster_bits (typically 16 for 64 KiB clusters, range 9..21)
         if !(9..=21).contains(&cluster_bits) {
-            bail!(
-                "Invalid cluster_bits {} (must be 9..21)",
-                cluster_bits
-            );
+            bail!("Invalid cluster_bits {} (must be 9..21)", cluster_bits);
         }
 
         if crypt_method != 0 {
@@ -292,7 +294,7 @@ impl<R: Read + Seek> Read for Qcow2Reader<R> {
 
         let n = self
             .read_cluster_data(self.pos, &mut buf[..to_read])
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            .map_err(io::Error::other)?;
 
         self.pos += n as u64;
         Ok(n)
@@ -316,8 +318,8 @@ pub fn open_qcow2(path: &std::path::Path) -> Result<Qcow2Reader<std::fs::File>> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Cursor;
     use byteorder::{BigEndian, WriteBytesExt};
+    use std::io::Cursor;
 
     /// Build a minimal valid QCOW2 v2 image in memory.
     /// Creates a 1 MiB virtual disk with one allocated cluster containing test data.
@@ -335,9 +337,9 @@ mod tests {
         //   Cluster 4: Refcount table
         //   Cluster 5: Refcount block
 
-        let l1_table_offset = cluster_size;       // cluster 1
-        let l2_table_offset = cluster_size * 2;    // cluster 2
-        let data_offset = cluster_size * 3;        // cluster 3
+        let l1_table_offset = cluster_size; // cluster 1
+        let l2_table_offset = cluster_size * 2; // cluster 2
+        let data_offset = cluster_size * 3; // cluster 3
         let refcount_table_offset = cluster_size * 4; // cluster 4
 
         let l1_size: u32 = 1; // one L1 entry covers l2_entries clusters
@@ -356,7 +358,9 @@ mod tests {
         cursor.write_u32::<BigEndian>(0).unwrap(); // crypt_method
         cursor.write_u32::<BigEndian>(l1_size).unwrap();
         cursor.write_u64::<BigEndian>(l1_table_offset).unwrap();
-        cursor.write_u64::<BigEndian>(refcount_table_offset).unwrap();
+        cursor
+            .write_u64::<BigEndian>(refcount_table_offset)
+            .unwrap();
         cursor.write_u32::<BigEndian>(1).unwrap(); // refcount_table_clusters
         cursor.write_u32::<BigEndian>(0).unwrap(); // nb_snapshots
         cursor.write_u64::<BigEndian>(0).unwrap(); // snapshots_offset

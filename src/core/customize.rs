@@ -124,7 +124,7 @@ impl fmt::Display for CustomizationFormat {
 }
 
 /// Full OS customization specification.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct OsCustomization {
     pub hostname: Option<String>,
     pub users: Vec<UserAccount>,
@@ -134,21 +134,6 @@ pub struct OsCustomization {
     pub packages: Vec<String>,
     pub run_commands: Vec<String>,
     pub extra_files: HashMap<String, String>,
-}
-
-impl Default for OsCustomization {
-    fn default() -> Self {
-        Self {
-            hostname: None,
-            users: Vec::new(),
-            ssh: None,
-            wifi: None,
-            locale: None,
-            packages: Vec::new(),
-            run_commands: Vec::new(),
-            extra_files: HashMap::new(),
-        }
-    }
 }
 
 impl OsCustomization {
@@ -196,13 +181,16 @@ impl OsCustomization {
         // Hostname
         if let Some(ref hostname) = self.hostname {
             validate_hostname(hostname)?;
-            script.push_str(&format!("# Set hostname\n"));
+            script.push_str("# Set hostname\n");
             script.push_str(&format!("echo '{}' > /etc/hostname\n", hostname));
             script.push_str(&format!(
                 "sed -i 's/127\\.0\\.1\\.1.*/127.0.1.1\\t{}/' /etc/hosts\n",
                 hostname
             ));
-            script.push_str(&format!("hostnamectl set-hostname '{}' 2>/dev/null || true\n\n", hostname));
+            script.push_str(&format!(
+                "hostnamectl set-hostname '{}' 2>/dev/null || true\n\n",
+                hostname
+            ));
         }
 
         // Users
@@ -223,10 +211,7 @@ impl OsCustomization {
             }
 
             if !user.ssh_authorized_keys.is_empty() {
-                script.push_str(&format!(
-                    "mkdir -p /home/{}/.ssh\n",
-                    user.username
-                ));
+                script.push_str(&format!("mkdir -p /home/{}/.ssh\n", user.username));
                 for key in &user.ssh_authorized_keys {
                     script.push_str(&format!(
                         "echo '{}' >> /home/{}/.ssh/authorized_keys\n",
@@ -246,7 +231,9 @@ impl OsCustomization {
             if ssh.enable {
                 script.push_str("# Enable SSH\n");
                 script.push_str("systemctl enable ssh 2>/dev/null || systemctl enable sshd 2>/dev/null || true\n");
-                script.push_str("systemctl start ssh 2>/dev/null || systemctl start sshd 2>/dev/null || true\n");
+                script.push_str(
+                    "systemctl start ssh 2>/dev/null || systemctl start sshd 2>/dev/null || true\n",
+                );
                 if !ssh.password_auth {
                     script.push_str("sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config\n");
                 }
@@ -396,12 +383,9 @@ impl OsCustomization {
                     }
                 }
                 yaml.push_str(&format!("    shell: {}\n", user.shell));
-                if user.password_hash.is_some() {
+                if let Some(hash) = &user.password_hash {
                     yaml.push_str("    lock_passwd: false\n");
-                    yaml.push_str(&format!(
-                        "    passwd: {}\n",
-                        user.password_hash.as_ref().unwrap()
-                    ));
+                    yaml.push_str(&format!("    passwd: {}\n", hash));
                 }
                 if !user.ssh_authorized_keys.is_empty() {
                     yaml.push_str("    ssh_authorized_keys:\n");
@@ -416,7 +400,11 @@ impl OsCustomization {
         // SSH
         if let Some(ref ssh) = self.ssh {
             yaml.push_str("ssh_pwauth: ");
-            yaml.push_str(if ssh.password_auth { "true\n" } else { "false\n" });
+            yaml.push_str(if ssh.password_auth {
+                "true\n"
+            } else {
+                "false\n"
+            });
         }
 
         // Timezone / locale
@@ -500,11 +488,11 @@ impl OsCustomization {
 
     /// Generate all customization files and return them as (filename, content) pairs.
     pub fn generate_all(&self) -> Result<Vec<(String, String)>> {
-        let mut files = Vec::new();
-        files.push(("firstrun.sh".into(), self.generate_firstrun_script()?));
-        files.push(("user-data".into(), self.generate_cloud_init()?));
-        files.push(("network-config".into(), self.generate_network_config()?));
-        Ok(files)
+        Ok(vec![
+            ("firstrun.sh".into(), self.generate_firstrun_script()?),
+            ("user-data".into(), self.generate_cloud_init()?),
+            ("network-config".into(), self.generate_network_config()?),
+        ])
     }
 
     /// Write customization files to a directory.
@@ -558,7 +546,9 @@ fn validate_username(username: &str) -> Result<()> {
         return Err(anyhow!("username must be 1-32 characters"));
     }
     if !username.starts_with(|c: char| c.is_ascii_lowercase() || c == '_') {
-        return Err(anyhow!("username must start with a lowercase letter or underscore"));
+        return Err(anyhow!(
+            "username must start with a lowercase letter or underscore"
+        ));
     }
     if !username
         .chars()
@@ -598,9 +588,10 @@ pub fn detect_current_wifi() -> Option<String> {
             .ok()
             .and_then(|o| {
                 if o.status.success() {
-                    String::from_utf8(o.stdout)
-                        .ok()
-                        .and_then(|s| s.strip_prefix("Current Wi-Fi Network: ").map(|n| n.trim().to_string()))
+                    String::from_utf8(o.stdout).ok().and_then(|s| {
+                        s.strip_prefix("Current Wi-Fi Network: ")
+                            .map(|n| n.trim().to_string())
+                    })
                 } else {
                     None
                 }
@@ -827,8 +818,14 @@ mod tests {
 
     #[test]
     fn test_customization_format_display() {
-        assert_eq!(format!("{}", CustomizationFormat::FirstrunScript), "firstrun.sh");
-        assert_eq!(format!("{}", CustomizationFormat::CloudInit), "cloud-init user-data");
+        assert_eq!(
+            format!("{}", CustomizationFormat::FirstrunScript),
+            "firstrun.sh"
+        );
+        assert_eq!(
+            format!("{}", CustomizationFormat::CloudInit),
+            "cloud-init user-data"
+        );
     }
 
     #[test]

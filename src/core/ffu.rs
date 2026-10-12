@@ -98,14 +98,26 @@ impl std::fmt::Display for FfuSecurityHeader {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "FFU Security Header:")?;
         writeln!(f, "  Header size:       {} bytes", self.header_size)?;
-        writeln!(f, "  Hash algorithm:    {}", match self.hash_algorithm {
-            1 => "SHA-256",
-            _ => "Unknown",
-        })?;
+        writeln!(
+            f,
+            "  Hash algorithm:    {}",
+            match self.hash_algorithm {
+                1 => "SHA-256",
+                _ => "Unknown",
+            }
+        )?;
         writeln!(f, "  Chunk count:       {}", self.chunk_count)?;
         writeln!(f, "  Chunk size:        {} KiB", self.chunk_size / 1024)?;
-        writeln!(f, "  Hash table:        offset={:#x} size={}", self.hash_table_offset, self.hash_table_size)?;
-        write!(f, "  Catalog:           offset={:#x} size={}", self.catalog_offset, self.catalog_size)
+        writeln!(
+            f,
+            "  Hash table:        offset={:#x} size={}",
+            self.hash_table_offset, self.hash_table_size
+        )?;
+        write!(
+            f,
+            "  Catalog:           offset={:#x} size={}",
+            self.catalog_offset, self.catalog_size
+        )
     }
 }
 
@@ -133,22 +145,27 @@ impl FfuImageHeader {
         let manifest_len = reader.read_u32::<LittleEndian>()? as u64;
 
         if manifest_len > FFU_MAX_MANIFEST_LEN {
-            bail!("FFU manifest length {} exceeds maximum {}", manifest_len, FFU_MAX_MANIFEST_LEN);
+            bail!(
+                "FFU manifest length {} exceeds maximum {}",
+                manifest_len,
+                FFU_MAX_MANIFEST_LEN
+            );
         }
 
         let mut manifest_bytes = vec![0u8; manifest_len as usize];
         reader.read_exact(&mut manifest_bytes)?;
 
         // Manifest may be UTF-16LE or UTF-8; try UTF-8 first
-        let manifest = String::from_utf8(manifest_bytes.clone())
-            .unwrap_or_else(|_| {
-                // Try UTF-16LE
-                let words: Vec<u16> = manifest_bytes
-                    .chunks_exact(2)
-                    .map(|c| u16::from_le_bytes([c[0], c[1]]))
-                    .collect();
-                String::from_utf16_lossy(&words)
-            });
+        let manifest = String::from_utf8(manifest_bytes.clone()).unwrap_or_else(|_| {
+            // Try UTF-16LE
+            let words: Vec<u16> = manifest_bytes
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|c| u16::from_le_bytes([c[0], c[1]]))
+                .collect();
+            String::from_utf16_lossy(&words)
+        });
 
         let platform_id_count = reader.read_u32::<LittleEndian>()?;
         let mut platform_ids = Vec::with_capacity(platform_id_count as usize);
@@ -307,19 +324,39 @@ impl FfuStoreHeader {
 impl std::fmt::Display for FfuStoreHeader {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "FFU Store Header:")?;
-        writeln!(f, "  Version:           {}.{}", self.major_version, self.minor_version)?;
-        writeln!(f, "  Full-flash ver:    {}.{}", self.full_flash_major, self.full_flash_minor)?;
-        writeln!(f, "  Update type:       {}", match self.update_type {
-            1 => "Full",
-            2 => "Partial",
-            _ => "Unknown",
-        })?;
+        writeln!(
+            f,
+            "  Version:           {}.{}",
+            self.major_version, self.minor_version
+        )?;
+        writeln!(
+            f,
+            "  Full-flash ver:    {}.{}",
+            self.full_flash_major, self.full_flash_minor
+        )?;
+        writeln!(
+            f,
+            "  Update type:       {}",
+            match self.update_type {
+                1 => "Full",
+                2 => "Partial",
+                _ => "Unknown",
+            }
+        )?;
         writeln!(f, "  Block size:        {} KiB", self.block_size / 1024)?;
         writeln!(f, "  Sector size:       {} bytes", self.bytes_per_sector)?;
         writeln!(f, "  Sector count:      {}", self.sector_count)?;
-        writeln!(f, "  Disk size:         {} MiB", self.disk_size() / (1024 * 1024))?;
+        writeln!(
+            f,
+            "  Disk size:         {} MiB",
+            self.disk_size() / (1024 * 1024)
+        )?;
         writeln!(f, "  Block entries:     {}", self.block_data_entry_count)?;
-        write!(f, "  Payload size:      {} MiB", self.payload_size() / (1024 * 1024))
+        write!(
+            f,
+            "  Payload size:      {} MiB",
+            self.payload_size() / (1024 * 1024)
+        )
     }
 }
 
@@ -337,8 +374,8 @@ impl FfuInfo {
     /// Parse a complete FFU image from a seekable reader.
     /// Reads security header → image header → store headers.
     pub fn parse<R: Read + Seek>(reader: &mut R) -> Result<Self> {
-        let security = FfuSecurityHeader::parse(reader)
-            .context("Failed to parse FFU security header")?;
+        let security =
+            FfuSecurityHeader::parse(reader).context("Failed to parse FFU security header")?;
 
         // Image header starts after security header (aligned to chunk boundary)
         let chunk_size = if security.chunk_size > 0 {
@@ -359,8 +396,7 @@ impl FfuInfo {
         reader.seek(SeekFrom::Start(store_offset))?;
 
         // Parse one store header (multi-store images are rare)
-        let store = FfuStoreHeader::parse(reader)
-            .context("Failed to parse FFU store header")?;
+        let store = FfuStoreHeader::parse(reader).context("Failed to parse FFU store header")?;
 
         Ok(Self {
             security,
@@ -437,8 +473,7 @@ impl<R: Read + Seek> FfuReader<R> {
         let store_offset = align_up(img_end, chunk_size);
 
         // Store header size
-        let store_header_size = info.stores.first()
-            .map_or(0, |s| s.header_size as u64);
+        let store_header_size = info.stores.first().map_or(0, |s| s.header_size as u64);
         let payload_file_offset = align_up(store_offset + store_header_size, chunk_size);
 
         inner.seek(SeekFrom::Start(payload_file_offset))?;
@@ -492,11 +527,15 @@ impl<R: Read + Seek> Read for FfuReader<R> {
                 let offset_in_entry = self.disk_pos - entry_disk_start;
                 let remaining_in_entry = entry_disk_len - offset_in_entry;
                 let remaining_in_disk = self.disk_size - self.disk_pos;
-                let to_read = buf.len().min(remaining_in_entry as usize).min(remaining_in_disk as usize);
+                let to_read = buf
+                    .len()
+                    .min(remaining_in_entry as usize)
+                    .min(remaining_in_disk as usize);
 
                 let file_offset = self.payload_file_offset + file_payload_offset + offset_in_entry;
-                self.inner.seek(SeekFrom::Start(file_offset))
-                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+                self.inner
+                    .seek(SeekFrom::Start(file_offset))
+                    .map_err(io::Error::other)?;
 
                 let n = self.inner.read(&mut buf[..to_read])?;
                 self.disk_pos += n as u64;
@@ -512,7 +551,10 @@ impl<R: Read + Seek> Read for FfuReader<R> {
                     // In a gap — fill with zeros
                     let gap_remaining = next_start - self.disk_pos;
                     let remaining_in_disk = self.disk_size - self.disk_pos;
-                    let to_fill = buf.len().min(gap_remaining as usize).min(remaining_in_disk as usize);
+                    let to_fill = buf
+                        .len()
+                        .min(gap_remaining as usize)
+                        .min(remaining_in_disk as usize);
                     buf[..to_fill].fill(0);
                     self.disk_pos += to_fill as u64;
                     return Ok(to_fill);
@@ -574,14 +616,14 @@ mod tests {
         // Security header: signature + 8 u32 fields
         buf.extend_from_slice(FFU_SIGNATURE); // 12 bytes
         buf.extend_from_slice(&256u32.to_le_bytes()); // header_size
-        buf.extend_from_slice(&64u32.to_le_bytes());  // hash_table_offset
-        buf.extend_from_slice(&32u32.to_le_bytes());  // hash_table_size
-        buf.extend_from_slice(&1u32.to_le_bytes());   // hash_algorithm (SHA-256)
-        buf.extend_from_slice(&4u32.to_le_bytes());   // chunk_count
+        buf.extend_from_slice(&64u32.to_le_bytes()); // hash_table_offset
+        buf.extend_from_slice(&32u32.to_le_bytes()); // hash_table_size
+        buf.extend_from_slice(&1u32.to_le_bytes()); // hash_algorithm (SHA-256)
+        buf.extend_from_slice(&4u32.to_le_bytes()); // chunk_count
         buf.extend_from_slice(&(128 * 1024u32).to_le_bytes()); // chunk_size (128 KiB)
         buf.extend_from_slice(&128u32.to_le_bytes()); // catalog_offset
-        buf.extend_from_slice(&64u32.to_le_bytes());  // catalog_size
-        // Pad to 256 bytes (header_size)
+        buf.extend_from_slice(&64u32.to_le_bytes()); // catalog_size
+                                                     // Pad to 256 bytes (header_size)
         buf.resize(256, 0);
 
         // Align to chunk boundary (128 KiB)
@@ -610,23 +652,23 @@ mod tests {
 
         // Store header: minimal fields
         let store_start = buf.len();
-        buf.extend_from_slice(&64u32.to_le_bytes());  // header_size
-        buf.extend_from_slice(&1u32.to_le_bytes());   // update_type (Full)
-        buf.extend_from_slice(&2u16.to_le_bytes());   // major_version
-        buf.extend_from_slice(&0u16.to_le_bytes());   // minor_version
-        buf.extend_from_slice(&1u16.to_le_bytes());   // full_flash_major
-        buf.extend_from_slice(&0u16.to_le_bytes());   // full_flash_minor
-        buf.extend_from_slice(&0u32.to_le_bytes());   // reserved
-        buf.extend_from_slice(&1u32.to_le_bytes());   // block_data_entry_count
+        buf.extend_from_slice(&64u32.to_le_bytes()); // header_size
+        buf.extend_from_slice(&1u32.to_le_bytes()); // update_type (Full)
+        buf.extend_from_slice(&2u16.to_le_bytes()); // major_version
+        buf.extend_from_slice(&0u16.to_le_bytes()); // minor_version
+        buf.extend_from_slice(&1u16.to_le_bytes()); // full_flash_major
+        buf.extend_from_slice(&0u16.to_le_bytes()); // full_flash_minor
+        buf.extend_from_slice(&0u32.to_le_bytes()); // reserved
+        buf.extend_from_slice(&1u32.to_le_bytes()); // block_data_entry_count
         buf.extend_from_slice(&(128 * 1024u32).to_le_bytes()); // block_size
         buf.extend_from_slice(&512u32.to_le_bytes()); // bytes_per_sector
         buf.extend_from_slice(&2048u64.to_le_bytes()); // sector_count → 1 MiB disk
-        // Block data entry: location_count=1, access_method=0, block_index=0, block_count=1
-        buf.extend_from_slice(&1u32.to_le_bytes());   // location_count
-        buf.extend_from_slice(&0u32.to_le_bytes());   // access_method
-        buf.extend_from_slice(&0u64.to_le_bytes());   // block_index
-        buf.extend_from_slice(&1u32.to_le_bytes());   // block_count
-        // Pad store header
+                                                       // Block data entry: location_count=1, access_method=0, block_index=0, block_count=1
+        buf.extend_from_slice(&1u32.to_le_bytes()); // location_count
+        buf.extend_from_slice(&0u32.to_le_bytes()); // access_method
+        buf.extend_from_slice(&0u64.to_le_bytes()); // block_index
+        buf.extend_from_slice(&1u32.to_le_bytes()); // block_count
+                                                    // Pad store header
         let padded_store = store_start + 64;
         if buf.len() < padded_store {
             buf.resize(padded_store, 0);
@@ -637,7 +679,7 @@ mod tests {
         buf.resize(aligned, 0);
 
         // Payload: one block of 128 KiB with pattern
-        let payload_start = buf.len();
+        let _payload_start = buf.len();
         for i in 0..(128 * 1024) {
             buf.push((i % 256) as u8);
         }

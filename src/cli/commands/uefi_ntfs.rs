@@ -19,7 +19,10 @@ pub async fn execute(opts: UefiNtfsOpts) -> Result<()> {
             } else {
                 println!("Layout Analysis:");
                 println!("  Files: {}", analysis.file_count);
-                println!("  Total size: {}", uefi_ntfs::format_size(analysis.total_size));
+                println!(
+                    "  Total size: {}",
+                    uefi_ntfs::format_size(analysis.total_size)
+                );
                 println!(
                     "  Largest file: {} ({})",
                     analysis.largest_file_name,
@@ -67,10 +70,7 @@ pub async fn execute(opts: UefiNtfsOpts) -> Result<()> {
             }
         }
         other => {
-            anyhow::bail!(
-                "Unknown action: {}. Use 'analyze' or 'plan'.",
-                other
-            );
+            anyhow::bail!("Unknown action: {}. Use 'analyze' or 'plan'.", other);
         }
     }
 

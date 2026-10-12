@@ -6,17 +6,16 @@ use clap::Parser;
 use log::{error, info};
 use std::sync::Arc;
 
-mod cli;
-mod core;
-mod mcp;
-mod ontology;
-mod platform;
+// The modules live in the library crate; the binary is a thin front end over it.
+// Declaring them here as well compiled every module twice, and the binary's copy
+// flagged library APIs it does not call as dead code.
+use abt::{cli, core, mcp};
 
 #[cfg(feature = "tui")]
-mod tui;
+use abt::tui;
 
 #[cfg(feature = "gui")]
-mod gui;
+use abt::gui;
 
 use cli::Args;
 use core::progress::Progress;
@@ -140,7 +139,9 @@ async fn main() -> Result<()> {
         cli::Command::SecureBoot(opts) => cli::commands::secureboot::execute(opts).await,
         cli::Command::FsDetect(opts) => cli::commands::fs_detect::execute(opts).await,
         cli::Command::DriveScan(opts) => cli::commands::drive_scan::execute(opts).await,
-        cli::Command::DriveConstraints(opts) => cli::commands::drive_constraints::execute(opts).await,
+        cli::Command::DriveConstraints(opts) => {
+            cli::commands::drive_constraints::execute(opts).await
+        }
         cli::Command::WinToGo(opts) => cli::commands::wintogo::execute(opts).await,
         cli::Command::Syslinux(opts) => cli::commands::syslinux::execute(opts).await,
         cli::Command::Ffu(opts) => cli::commands::ffu::execute(opts).await,

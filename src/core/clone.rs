@@ -256,7 +256,9 @@ fn is_all_zero(buf: &[u8]) -> bool {
     // SAFETY: `align_to` returns a valid decomposition of the byte slice.
     // Read-only access, no aliasing. All bytes checked exactly once.
     let (prefix, words, suffix) = unsafe { buf.align_to::<u64>() };
-    prefix.iter().all(|&b| b == 0) && words.iter().all(|&w| w == 0) && suffix.iter().all(|&b| b == 0)
+    prefix.iter().all(|&b| b == 0)
+        && words.iter().all(|&w| w == 0)
+        && suffix.iter().all(|&b| b == 0)
 }
 
 #[cfg(test)]

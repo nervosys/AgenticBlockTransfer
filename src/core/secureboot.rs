@@ -13,10 +13,15 @@
 
 #![allow(dead_code)]
 
-use anyhow::{bail, Context, Result};
-use log::{debug, error, info, warn};
+use anyhow::{bail, Result};
+// debug is used only by the Windows implementation.
+#[cfg_attr(not(target_os = "linux"), allow(unused_imports))]
+use anyhow::Context;
+#[cfg_attr(not(windows), allow(unused_imports))]
+use log::debug;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+#[cfg_attr(not(target_os = "linux"), allow(unused_imports))]
+use std::path::Path;
 
 /// Secure Boot state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -148,14 +153,14 @@ pub fn detect_firmware_mode() -> FirmwareMode {
         if Path::new("/sys/firmware/efi").exists() {
             return FirmwareMode::Uefi;
         }
-        return FirmwareMode::LegacyBios;
+        FirmwareMode::LegacyBios
     }
 
     #[cfg(target_os = "windows")]
     {
         // On Windows, we can check if GetFirmwareType returns UefiFirmwareType.
         // For now, assume UEFI if the system is modern.
-        return FirmwareMode::Uefi;
+        FirmwareMode::Uefi
     }
 
     #[cfg(target_os = "macos")]
@@ -174,8 +179,8 @@ pub fn detect_firmware_mode() -> FirmwareMode {
 #[cfg(target_os = "linux")]
 pub fn read_efi_variable(name: &str, guid: &str) -> Result<Vec<u8>> {
     let path = format!("{}/{}-{}", EFI_VARS_PATH, name, guid);
-    let data = std::fs::read(&path)
-        .with_context(|| format!("Cannot read EFI variable: {}", path))?;
+    let data =
+        std::fs::read(&path).with_context(|| format!("Cannot read EFI variable: {}", path))?;
 
     // EFI variable files have a 4-byte attributes prefix.
     if data.len() < 4 {
@@ -197,7 +202,7 @@ pub fn read_efi_variable(name: &str, guid: &str) -> Result<Vec<u8>> {
 
 /// Read a UEFI EFI variable (unsupported platform stub).
 #[cfg(not(any(target_os = "linux", target_os = "windows")))]
-pub fn read_efi_variable(name: &str, guid: &str) -> Result<Vec<u8>> {
+pub fn read_efi_variable(_name: &str, _guid: &str) -> Result<Vec<u8>> {
     bail!("EFI variable reading not supported on this platform")
 }
 
@@ -243,7 +248,9 @@ pub fn generate_report() -> SecureBootReport {
 
     match secure_boot {
         SecureBootState::Enabled => {
-            advice.push("Secure Boot is ENABLED — bootable media must use a signed bootloader".into());
+            advice.push(
+                "Secure Boot is ENABLED — bootable media must use a signed bootloader".into(),
+            );
             advice.push("Use a shim-signed GRUB2, or the Microsoft-signed UEFI bootloader".into());
             advice.push("Alternatively, enroll the distro's MOK key at boot time".into());
         }
@@ -292,9 +299,22 @@ pub fn format_report(report: &SecureBootReport) -> String {
     lines.push("Secure Boot Report".into());
     lines.push(format!("  Firmware: {}", report.firmware_mode));
     lines.push(format!("  Secure Boot: {}", report.secure_boot));
-    lines.push(format!("  Setup Mode: {}", if report.setup_mode { "Yes" } else { "No" }));
-    lines.push(format!("  UEFI Boot: {}", if report.uefi_boot { "Yes" } else { "No" }));
-    lines.push(format!("  Platform Key: {}", if report.has_pk { "Present" } else { "Not enrolled" }));
+    lines.push(format!(
+        "  Setup Mode: {}",
+        if report.setup_mode { "Yes" } else { "No" }
+    ));
+    lines.push(format!(
+        "  UEFI Boot: {}",
+        if report.uefi_boot { "Yes" } else { "No" }
+    ));
+    lines.push(format!(
+        "  Platform Key: {}",
+        if report.has_pk {
+            "Present"
+        } else {
+            "Not enrolled"
+        }
+    ));
     lines.push(format!("  KEK entries: {}", report.kek_count));
     lines.push(format!("  db entries: {}", report.db_count));
     lines.push(format!("  dbx entries: {}", report.dbx_count));
@@ -312,7 +332,10 @@ pub fn format_report(report: &SecureBootReport) -> String {
         lines.push(String::new());
         lines.push("Enrolled Keys:".into());
         for key in &report.keys {
-            lines.push(format!("  [{}] {} (issuer: {})", key.database, key.subject, key.issuer));
+            lines.push(format!(
+                "  [{}] {} (issuer: {})",
+                key.database, key.subject, key.issuer
+            ));
         }
     }
 
@@ -388,7 +411,8 @@ pub fn is_likely_signed(path: &Path) -> Result<bool> {
     std::io::Read::read_exact(&mut file, &mut cert_entry)?;
 
     let cert_rva = u32::from_le_bytes([cert_entry[0], cert_entry[1], cert_entry[2], cert_entry[3]]);
-    let cert_size = u32::from_le_bytes([cert_entry[4], cert_entry[5], cert_entry[6], cert_entry[7]]);
+    let cert_size =
+        u32::from_le_bytes([cert_entry[4], cert_entry[5], cert_entry[6], cert_entry[7]]);
 
     Ok(cert_rva != 0 && cert_size != 0)
 }
@@ -405,8 +429,8 @@ pub fn known_signed_bootloaders() -> Vec<&'static str> {
         "bootx64.efi",
         "bootia32.efi",
         "bootaa64.efi",
-        "mmx64.efi",     // MOK Manager
-        "fwupx64.efi",   // firmware update
+        "mmx64.efi",   // MOK Manager
+        "fwupx64.efi", // firmware update
     ]
 }
 
@@ -555,7 +579,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.efi");
         std::fs::write(&path, b"not a PE file at all!").unwrap();
-        assert_eq!(is_likely_signed(&path).unwrap(), false);
+        assert!(!is_likely_signed(&path).unwrap());
     }
 
     #[test]
@@ -566,9 +590,9 @@ mod tests {
         data[0] = b'M';
         data[1] = b'Z';
         data[0x3C] = 0x80; // PE offset points to 0x80
-        // No PE signature at 0x80
+                           // No PE signature at 0x80
         std::fs::write(&path, &data).unwrap();
-        assert_eq!(is_likely_signed(&path).unwrap(), false);
+        assert!(!is_likely_signed(&path).unwrap());
     }
 
     #[test]
@@ -579,7 +603,7 @@ mod tests {
         data[0] = b'M';
         data[1] = b'Z';
         data[0x3C] = 0x80; // PE offset
-        // PE signature at 0x80
+                           // PE signature at 0x80
         data[0x80] = b'P';
         data[0x81] = b'E';
         data[0x82] = 0;
@@ -593,7 +617,7 @@ mod tests {
         // Certificate table at optional header offset 144: 0x98+144 = 0x128
         // All zeros = not signed
         std::fs::write(&path, &data).unwrap();
-        assert_eq!(is_likely_signed(&path).unwrap(), false);
+        assert!(!is_likely_signed(&path).unwrap());
     }
 
     #[test]
@@ -608,7 +632,9 @@ mod tests {
             db_count: 5,
             dbx_count: 100,
             keys: vec![],
-            advice: vec!["Secure Boot is ENABLED — bootable media must use a signed bootloader".into()],
+            advice: vec![
+                "Secure Boot is ENABLED — bootable media must use a signed bootloader".into(),
+            ],
             platform: "windows/x86_64".into(),
         };
         let text = format_report(&report);
@@ -627,16 +653,14 @@ mod tests {
             kek_count: 1,
             db_count: 1,
             dbx_count: 0,
-            keys: vec![
-                KeyEntry {
-                    database: KeyDatabase::PK,
-                    subject: "Test PK".into(),
-                    issuer: "Self".into(),
-                    fingerprint: "aabbcc".into(),
-                    not_before: None,
-                    not_after: None,
-                },
-            ],
+            keys: vec![KeyEntry {
+                database: KeyDatabase::PK,
+                subject: "Test PK".into(),
+                issuer: "Self".into(),
+                fingerprint: "aabbcc".into(),
+                not_before: None,
+                not_after: None,
+            }],
             advice: vec![],
             platform: "linux/x86_64".into(),
         };
@@ -647,6 +671,9 @@ mod tests {
 
     #[test]
     fn test_efi_global_variable_guid() {
-        assert_eq!(EFI_GLOBAL_VARIABLE_GUID, "8be4df61-93ca-11d2-aa0d-00e098032b8c");
+        assert_eq!(
+            EFI_GLOBAL_VARIABLE_GUID,
+            "8be4df61-93ca-11d2-aa0d-00e098032b8c"
+        );
     }
 }

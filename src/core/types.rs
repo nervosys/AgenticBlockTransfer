@@ -72,7 +72,10 @@ impl ImageFormat {
 
     /// Whether this format is a compression wrapper.
     pub fn is_compressed(&self) -> bool {
-        matches!(self, Self::Gz | Self::Bz2 | Self::Xz | Self::Zstd | Self::Zip)
+        matches!(
+            self,
+            Self::Gz | Self::Bz2 | Self::Xz | Self::Zstd | Self::Zip
+        )
     }
 }
 
@@ -114,22 +117,16 @@ impl fmt::Display for Filesystem {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum HashAlgorithm {
-    Md5,
-    Sha1,
     Sha256,
     Sha512,
-    Blake3,
     Crc32,
 }
 
 impl fmt::Display for HashAlgorithm {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Md5 => write!(f, "MD5"),
-            Self::Sha1 => write!(f, "SHA-1"),
             Self::Sha256 => write!(f, "SHA-256"),
             Self::Sha512 => write!(f, "SHA-512"),
-            Self::Blake3 => write!(f, "BLAKE3"),
             Self::Crc32 => write!(f, "CRC32"),
         }
     }

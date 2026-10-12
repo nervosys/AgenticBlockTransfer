@@ -161,11 +161,7 @@ fn read_geom_info(name: &str) -> Result<DeviceInfo> {
             model
         },
         vendor,
-        serial: if ident.is_empty() {
-            None
-        } else {
-            Some(ident)
-        },
+        serial: if ident.is_empty() { None } else { Some(ident) },
         size,
         sector_size,
         physical_sector_size: sector_size,

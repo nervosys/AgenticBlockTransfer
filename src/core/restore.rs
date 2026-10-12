@@ -16,10 +16,9 @@
 
 #![allow(dead_code)]
 
-use anyhow::{bail, Context, Result};
-use log::{debug, error, info, warn};
+use anyhow::{bail, Result};
+use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 /// Partition table type to create on the restored device.
@@ -50,7 +49,10 @@ impl std::str::FromStr for PartitionTableType {
             "gpt" => Ok(PartitionTableType::Gpt),
             "mbr" | "dos" => Ok(PartitionTableType::Mbr),
             "auto" => Ok(PartitionTableType::Auto),
-            _ => bail!("Unknown partition table type: '{}'. Use gpt, mbr, or auto.", s),
+            _ => bail!(
+                "Unknown partition table type: '{}'. Use gpt, mbr, or auto.",
+                s
+            ),
         }
     }
 }
@@ -177,7 +179,10 @@ impl std::fmt::Display for StepStatus {
 }
 
 /// Resolve the partition table type (auto → GPT if >= 2 TiB, MBR otherwise).
-pub fn resolve_table_type(table_type: PartitionTableType, capacity_bytes: u64) -> PartitionTableType {
+pub fn resolve_table_type(
+    table_type: PartitionTableType,
+    capacity_bytes: u64,
+) -> PartitionTableType {
     match table_type {
         PartitionTableType::Auto => {
             let two_tib = 2u64 * 1024 * 1024 * 1024 * 1024;
@@ -208,7 +213,10 @@ pub fn validate_config(config: &RestoreConfig) -> Result<()> {
 
     // FAT32 has a 32 character label limit; exFAT has 11
     if config.label.len() > 32 {
-        bail!("Volume label too long (max 32 characters): '{}'", config.label);
+        bail!(
+            "Volume label too long (max 32 characters): '{}'",
+            config.label
+        );
     }
 
     // FAT32 label must be uppercase ASCII (we'll auto-convert)
@@ -259,7 +267,10 @@ pub async fn execute_restore(config: &RestoreConfig) -> Result<RestoreResult> {
     let mut steps = Vec::new();
 
     info!("Restoring device {} to factory state", config.device);
-    info!("  Table: {}, FS: {}, Label: '{}'", config.table_type, config.filesystem, config.label);
+    info!(
+        "  Table: {}, FS: {}, Label: '{}'",
+        config.table_type, config.filesystem, config.label
+    );
 
     // Step 1: Validate
     let step_start = Instant::now();
@@ -278,14 +289,20 @@ pub async fn execute_restore(config: &RestoreConfig) -> Result<RestoreResult> {
     // Step 3: Wipe partition table (simulated in cross-platform code)
     if config.wipe_table {
         let step_start = Instant::now();
-        info!("Wiping partition table: zeroing first and last {} sectors", WIPE_SECTORS);
+        info!(
+            "Wiping partition table: zeroing first and last {} sectors",
+            WIPE_SECTORS
+        );
         // In a real implementation, this would write zeros to the device.
         // Platform-specific code handles actual I/O.
         steps.push(RestoreStep {
             name: "Wipe partition table".into(),
             status: StepStatus::Success,
             duration_ms: step_start.elapsed().as_millis() as u64,
-            detail: Some(format!("Zeroed {} bytes at head + tail", wipe_area_size() * 2)),
+            detail: Some(format!(
+                "Zeroed {} bytes at head + tail",
+                wipe_area_size() * 2
+            )),
         });
     } else {
         steps.push(RestoreStep {
@@ -318,7 +335,10 @@ pub async fn execute_restore(config: &RestoreConfig) -> Result<RestoreResult> {
 
     // Step 6: Format
     let step_start = Instant::now();
-    info!("Formatting as {} with label '{}'", config.filesystem, config.label);
+    info!(
+        "Formatting as {} with label '{}'",
+        config.filesystem, config.label
+    );
     steps.push(RestoreStep {
         name: format!("Format as {}", config.filesystem),
         status: StepStatus::Success,
@@ -358,12 +378,18 @@ pub fn describe_restore_commands(config: &RestoreConfig, capacity_bytes: u64) ->
     #[cfg(target_os = "windows")]
     {
         let disk_num = extract_windows_disk_number(&config.device).unwrap_or(0);
-        cmds.push(format!("Clear-Disk -Number {} -RemoveData -RemoveOEM -Confirm:$false", disk_num));
+        cmds.push(format!(
+            "Clear-Disk -Number {} -RemoveData -RemoveOEM -Confirm:$false",
+            disk_num
+        ));
         let style = match resolved {
             PartitionTableType::Gpt => "GPT",
             PartitionTableType::Mbr | PartitionTableType::Auto => "MBR",
         };
-        cmds.push(format!("Initialize-Disk -Number {} -PartitionStyle {}", disk_num, style));
+        cmds.push(format!(
+            "Initialize-Disk -Number {} -PartitionStyle {}",
+            disk_num, style
+        ));
         let fs = match config.filesystem {
             RestoreFilesystem::ExFat => "exFAT",
             RestoreFilesystem::Fat32 => "FAT32",
@@ -385,7 +411,10 @@ pub fn describe_restore_commands(config: &RestoreConfig, capacity_bytes: u64) ->
         match resolved {
             PartitionTableType::Gpt => {
                 cmds.push(format!("sgdisk --zap-all {}", config.device));
-                cmds.push(format!("sgdisk --new=1:0:0 --typecode=1:0700 {}", config.device));
+                cmds.push(format!(
+                    "sgdisk --new=1:0:0 --typecode=1:0700 {}",
+                    config.device
+                ));
             }
             PartitionTableType::Mbr | PartitionTableType::Auto => {
                 cmds.push(format!("sfdisk {} <<< ';'", config.device));
@@ -395,7 +424,12 @@ pub fn describe_restore_commands(config: &RestoreConfig, capacity_bytes: u64) ->
         let mkfs = match config.filesystem {
             RestoreFilesystem::ExFat => format!("mkfs.exfat -n '{}' {}", config.label, part),
             RestoreFilesystem::Fat32 => format!("mkfs.vfat -F 32 -n '{}' {}", config.label, part),
-            RestoreFilesystem::Ntfs => format!("mkfs.ntfs {} -L '{}' {}", if config.quick { "-Q" } else { "" }, config.label, part),
+            RestoreFilesystem::Ntfs => format!(
+                "mkfs.ntfs {} -L '{}' {}",
+                if config.quick { "-Q" } else { "" },
+                config.label,
+                part
+            ),
             RestoreFilesystem::Ext4 => format!("mkfs.ext4 -L '{}' {}", config.label, part),
             RestoreFilesystem::Btrfs => format!("mkfs.btrfs -L '{}' {}", config.label, part),
             RestoreFilesystem::Xfs => format!("mkfs.xfs -L '{}' {}", config.label, part),
@@ -474,7 +508,9 @@ pub fn plan_restore(config: &RestoreConfig) -> Result<RestorePlan> {
         || config.filesystem == RestoreFilesystem::Xfs
     {
         #[cfg(target_os = "windows")]
-        warnings.push("Linux filesystems are not readable on Windows without third-party drivers".into());
+        warnings.push(
+            "Linux filesystems are not readable on Windows without third-party drivers".into(),
+        );
     }
 
     let capacity_human = format_bytes(capacity);
@@ -522,10 +558,22 @@ mod tests {
 
     #[test]
     fn test_partition_table_type_parse() {
-        assert_eq!("gpt".parse::<PartitionTableType>().unwrap(), PartitionTableType::Gpt);
-        assert_eq!("mbr".parse::<PartitionTableType>().unwrap(), PartitionTableType::Mbr);
-        assert_eq!("dos".parse::<PartitionTableType>().unwrap(), PartitionTableType::Mbr);
-        assert_eq!("auto".parse::<PartitionTableType>().unwrap(), PartitionTableType::Auto);
+        assert_eq!(
+            "gpt".parse::<PartitionTableType>().unwrap(),
+            PartitionTableType::Gpt
+        );
+        assert_eq!(
+            "mbr".parse::<PartitionTableType>().unwrap(),
+            PartitionTableType::Mbr
+        );
+        assert_eq!(
+            "dos".parse::<PartitionTableType>().unwrap(),
+            PartitionTableType::Mbr
+        );
+        assert_eq!(
+            "auto".parse::<PartitionTableType>().unwrap(),
+            PartitionTableType::Auto
+        );
         assert!("bad".parse::<PartitionTableType>().is_err());
     }
 
@@ -538,13 +586,34 @@ mod tests {
 
     #[test]
     fn test_restore_filesystem_parse() {
-        assert_eq!("exfat".parse::<RestoreFilesystem>().unwrap(), RestoreFilesystem::ExFat);
-        assert_eq!("fat32".parse::<RestoreFilesystem>().unwrap(), RestoreFilesystem::Fat32);
-        assert_eq!("vfat".parse::<RestoreFilesystem>().unwrap(), RestoreFilesystem::Fat32);
-        assert_eq!("ntfs".parse::<RestoreFilesystem>().unwrap(), RestoreFilesystem::Ntfs);
-        assert_eq!("ext4".parse::<RestoreFilesystem>().unwrap(), RestoreFilesystem::Ext4);
-        assert_eq!("btrfs".parse::<RestoreFilesystem>().unwrap(), RestoreFilesystem::Btrfs);
-        assert_eq!("xfs".parse::<RestoreFilesystem>().unwrap(), RestoreFilesystem::Xfs);
+        assert_eq!(
+            "exfat".parse::<RestoreFilesystem>().unwrap(),
+            RestoreFilesystem::ExFat
+        );
+        assert_eq!(
+            "fat32".parse::<RestoreFilesystem>().unwrap(),
+            RestoreFilesystem::Fat32
+        );
+        assert_eq!(
+            "vfat".parse::<RestoreFilesystem>().unwrap(),
+            RestoreFilesystem::Fat32
+        );
+        assert_eq!(
+            "ntfs".parse::<RestoreFilesystem>().unwrap(),
+            RestoreFilesystem::Ntfs
+        );
+        assert_eq!(
+            "ext4".parse::<RestoreFilesystem>().unwrap(),
+            RestoreFilesystem::Ext4
+        );
+        assert_eq!(
+            "btrfs".parse::<RestoreFilesystem>().unwrap(),
+            RestoreFilesystem::Btrfs
+        );
+        assert_eq!(
+            "xfs".parse::<RestoreFilesystem>().unwrap(),
+            RestoreFilesystem::Xfs
+        );
         assert!("zfs".parse::<RestoreFilesystem>().is_err());
     }
 
@@ -559,20 +628,32 @@ mod tests {
     #[test]
     fn test_resolve_table_type_auto_small() {
         let gib_16 = 16 * 1024 * 1024 * 1024u64;
-        assert_eq!(resolve_table_type(PartitionTableType::Auto, gib_16), PartitionTableType::Mbr);
+        assert_eq!(
+            resolve_table_type(PartitionTableType::Auto, gib_16),
+            PartitionTableType::Mbr
+        );
     }
 
     #[test]
     fn test_resolve_table_type_auto_large() {
         let tib_3 = 3 * 1024 * 1024 * 1024 * 1024u64;
-        assert_eq!(resolve_table_type(PartitionTableType::Auto, tib_3), PartitionTableType::Gpt);
+        assert_eq!(
+            resolve_table_type(PartitionTableType::Auto, tib_3),
+            PartitionTableType::Gpt
+        );
     }
 
     #[test]
     fn test_resolve_table_type_explicit() {
         let gib_16 = 16 * 1024 * 1024 * 1024u64;
-        assert_eq!(resolve_table_type(PartitionTableType::Gpt, gib_16), PartitionTableType::Gpt);
-        assert_eq!(resolve_table_type(PartitionTableType::Mbr, gib_16), PartitionTableType::Mbr);
+        assert_eq!(
+            resolve_table_type(PartitionTableType::Gpt, gib_16),
+            PartitionTableType::Gpt
+        );
+        assert_eq!(
+            resolve_table_type(PartitionTableType::Mbr, gib_16),
+            PartitionTableType::Mbr
+        );
     }
 
     #[test]
@@ -653,7 +734,7 @@ mod tests {
         };
         let plan = plan_restore(&cfg).unwrap();
         // Should have a warning about FAT32 on large drives
-        assert!(plan.warnings.len() >= 1);
+        assert!(!plan.warnings.is_empty());
     }
 
     #[test]
@@ -666,10 +747,11 @@ mod tests {
             ..Default::default()
         };
         let cmds = describe_restore_commands(&cfg, 16 * 1024 * 1024 * 1024);
-        // On any platform, commands should be non-empty
-        // (compiled for the current target)
+        // The Linux command set is checked here; other platforms only build it.
         #[cfg(target_os = "linux")]
         assert!(cmds.len() >= 3);
+        #[cfg(not(target_os = "linux"))]
+        let _ = cmds;
     }
 
     #[test]

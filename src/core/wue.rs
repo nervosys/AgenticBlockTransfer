@@ -67,9 +67,9 @@ impl WindowsVersion {
     pub fn from_build_number(build: u32) -> Self {
         match build {
             26100..=26199 => Self::WindowsServer2025,
-            22000..=22999 => Self::Windows11,        // 21H2-22H2
-            23000..=25999 => Self::Windows11,        // 23H2+
-            19041..=19045 => Self::Windows10,        // 20H1-22H2
+            22000..=22999 => Self::Windows11, // 21H2-22H2
+            23000..=25999 => Self::Windows11, // 23H2+
+            19041..=19045 => Self::Windows10, // 20H1-22H2
             20348 => Self::WindowsServer2022,
             _ if build >= 22000 => Self::Windows11,
             _ => Self::Unknown,
@@ -429,9 +429,7 @@ fn generate_oobe_pass(arch: &str, config: &UnattendConfig) -> String {
             }
 
             if account.is_admin {
-                xml.push_str(
-                    "            <Group>Administrators</Group>\n",
-                );
+                xml.push_str("            <Group>Administrators</Group>\n");
             }
 
             xml.push_str("          </LocalAccount>\n");
@@ -707,8 +705,10 @@ mod tests {
 
     #[test]
     fn test_generate_unattend_xml_product_key() {
-        let mut config = UnattendConfig::default();
-        config.product_key = Some("XXXXX-XXXXX-XXXXX-XXXXX-XXXXX".into());
+        let config = UnattendConfig {
+            product_key: Some("XXXXX-XXXXX-XXXXX-XXXXX-XXXXX".into()),
+            ..Default::default()
+        };
         let xml = generate_unattend_xml(&config);
         assert!(xml.contains("<ProductKey>XXXXX-XXXXX-XXXXX-XXXXX-XXXXX</ProductKey>"));
     }
@@ -740,8 +740,10 @@ mod tests {
 
     #[test]
     fn test_generate_unattend_xml_arch() {
-        let mut config = UnattendConfig::default();
-        config.arch = WindowsArch::Arm64;
+        let config = UnattendConfig {
+            arch: WindowsArch::Arm64,
+            ..Default::default()
+        };
         let xml = generate_unattend_xml(&config);
         assert!(xml.contains("processorArchitecture=\"arm64\""));
     }

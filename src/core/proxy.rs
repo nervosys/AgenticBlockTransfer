@@ -196,7 +196,10 @@ impl NetworkConfig {
     pub fn new() -> Self {
         let proxy = detect_proxy_from_env();
         if let Some(ref p) = proxy {
-            info!("Proxy detected from environment: {} ({})", p.url, p.protocol);
+            info!(
+                "Proxy detected from environment: {} ({})",
+                p.url, p.protocol
+            );
         }
 
         Self {
@@ -245,7 +248,10 @@ impl NetworkConfig {
 
     /// Build a reqwest client with this network configuration applied.
     pub fn build_client(&self, profile: FetchProfile) -> Result<reqwest::Client> {
-        let inner = self.inner.read().map_err(|e| anyhow::anyhow!("Lock poisoned: {}", e))?;
+        let inner = self
+            .inner
+            .read()
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {}", e))?;
 
         let mut builder = reqwest::Client::builder()
             .user_agent(&inner.user_agent)
@@ -257,14 +263,16 @@ impl NetworkConfig {
             if proxy_config.protocol != ProxyProtocol::Direct {
                 debug!("Configuring proxy: {}", proxy_config.url);
                 let mut proxy = reqwest::Proxy::all(&proxy_config.url)?;
-                if let (Some(ref user), Some(ref pass)) = (&proxy_config.username, &proxy_config.password) {
+                if let (Some(ref user), Some(ref pass)) =
+                    (&proxy_config.username, &proxy_config.password)
+                {
                     proxy = proxy.basic_auth(user, pass);
                 }
                 builder = builder.proxy(proxy);
 
                 // Configure no-proxy
                 if !proxy_config.no_proxy.is_empty() {
-                    std::env::set_var("NO_PROXY", &proxy_config.no_proxy.join(","));
+                    std::env::set_var("NO_PROXY", proxy_config.no_proxy.join(","));
                     builder = builder.no_proxy();
                 }
             } else {
@@ -277,12 +285,18 @@ impl NetworkConfig {
 
     /// Get the user agent string.
     pub fn user_agent(&self) -> String {
-        self.inner.read().map(|inner| inner.user_agent.clone()).unwrap_or_default()
+        self.inner
+            .read()
+            .map(|inner| inner.user_agent.clone())
+            .unwrap_or_default()
     }
 
     /// Get max concurrent downloads.
     pub fn max_concurrent(&self) -> usize {
-        self.inner.read().map(|inner| inner.max_concurrent_downloads).unwrap_or(4)
+        self.inner
+            .read()
+            .map(|inner| inner.max_concurrent_downloads)
+            .unwrap_or(4)
     }
 
     /// Export current configuration as TOML-compatible structure.

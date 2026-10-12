@@ -8,8 +8,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 /// Raspberry Pi Imager catalog URL.
-const CATALOG_URL: &str =
-    "https://downloads.raspberrypi.com/os_list_imagingutility_v4.json";
+const CATALOG_URL: &str = "https://downloads.raspberrypi.com/os_list_imagingutility_v4.json";
 
 /// A parsed OS catalog.
 #[derive(Debug, Clone, Serialize, Deserialize)]

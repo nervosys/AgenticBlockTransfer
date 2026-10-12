@@ -6,8 +6,8 @@
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::io::{Read, Seek, SeekFrom};
-use std::path::{Path, PathBuf};
+use std::io::Read;
+use std::path::Path;
 
 /// Windows edition compatibility with Windows To Go.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -306,13 +306,19 @@ pub fn analyze_iso(iso_path: &Path) -> Result<WtgIsoAnalysis> {
         analysis.has_bootmgr && analysis.has_efi_boot && analysis.has_install_image;
 
     if !analysis.has_bootmgr {
-        analysis.notes.push("Missing bootmgr — not a bootable Windows ISO".to_string());
+        analysis
+            .notes
+            .push("Missing bootmgr — not a bootable Windows ISO".to_string());
     }
     if !analysis.has_efi_boot {
-        analysis.notes.push("Missing EFI boot files — UEFI boot not supported".to_string());
+        analysis
+            .notes
+            .push("Missing EFI boot files — UEFI boot not supported".to_string());
     }
     if !analysis.has_install_image {
-        analysis.notes.push("Missing install.wim/install.esd".to_string());
+        analysis
+            .notes
+            .push("Missing install.wim/install.esd".to_string());
     }
 
     if analysis.architecture == Some(WinArch::X86) {
@@ -489,7 +495,13 @@ fn extract_ascii_string(buf: &[u8], offset: usize, len: usize) -> Option<String>
     let slice = &buf[offset..offset + len];
     let s: String = slice
         .iter()
-        .map(|&b| if b >= 0x20 && b < 0x7F { b as char } else { ' ' })
+        .map(|&b| {
+            if (0x20..0x7F).contains(&b) {
+                b as char
+            } else {
+                ' '
+            }
+        })
         .collect();
     let trimmed = s.trim().to_string();
     if trimmed.is_empty() {
@@ -729,9 +741,7 @@ mod tests {
         assert!(result.has_bootmgr);
         assert!(result.has_efi_boot);
         assert_eq!(result.architecture, Some(WinArch::X64));
-        assert!(result
-            .editions
-            .contains(&WinToGoEdition::Enterprise));
+        assert!(result.editions.contains(&WinToGoEdition::Enterprise));
     }
 
     #[test]
@@ -741,9 +751,6 @@ mod tests {
             Some("HELLO".to_string())
         );
         assert_eq!(extract_ascii_string(b"\0\0\0", 0, 3), None);
-        assert_eq!(
-            extract_ascii_string(b"AB   ", 0, 5),
-            Some("AB".to_string())
-        );
+        assert_eq!(extract_ascii_string(b"AB   ", 0, 5), Some("AB".to_string()));
     }
 }

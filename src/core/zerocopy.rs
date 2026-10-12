@@ -11,6 +11,8 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
+use log::info;
 use log::warn;
 
 use super::progress::Progress;
@@ -68,7 +70,7 @@ pub fn transfer(
 
     #[cfg(any(target_os = "macos", target_os = "freebsd"))]
     {
-        transfer_sendfile(source, target, byte_limit, progress)
+        transfer_sendfile(source, target, block_size, byte_limit, progress)
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "freebsd")))]
@@ -93,7 +95,7 @@ fn transfer_splice(
     byte_limit: Option<u64>,
     progress: &Progress,
 ) -> Result<ZeroCopyResult> {
-    use std::os::unix::io::AsRawFd;
+    use std::os::unix::io::{AsFd, AsRawFd};
 
     let source_file = std::fs::File::open(source)
         .with_context(|| format!("Failed to open source {}", source.display()))?;
@@ -103,17 +105,18 @@ fn transfer_splice(
         .with_context(|| format!("Failed to open target {}", target.display()))?;
 
     // Create pipe for splice intermediary
-    let (pipe_read, pipe_write) = nix::unistd::pipe()
-        .context("Failed to create pipe for splice")?;
+    let (pipe_read, pipe_write) =
+        nix::unistd::pipe().context("Failed to create pipe for splice")?;
 
-    let source_fd = source_file.as_raw_fd();
-    let target_fd = target_file.as_raw_fd();
-
-    let pipe_size = block_size.min(1024 * 1024) as usize; // Cap pipe at 1 MiB
+    let pipe_size = block_size.min(1024 * 1024); // Cap pipe at 1 MiB
     let max_bytes = byte_limit.unwrap_or(u64::MAX);
     let mut total: u64 = 0;
 
-    info!("Zero-copy splice: {} → {}", source.display(), target.display());
+    info!(
+        "Zero-copy splice: {} → {}",
+        source.display(),
+        target.display()
+    );
 
     loop {
         if progress.is_cancelled() {
@@ -129,9 +132,9 @@ fn transfer_splice(
 
         // splice: source → pipe
         let spliced_in = match nix::fcntl::splice(
-            source_fd,
+            source_file.as_fd(),
             None,
-            pipe_write.as_raw_fd(),
+            pipe_write.as_fd(),
             None,
             chunk,
             nix::fcntl::SpliceFFlags::SPLICE_F_MOVE | nix::fcntl::SpliceFFlags::SPLICE_F_MORE,
@@ -154,9 +157,9 @@ fn transfer_splice(
         let mut sent = 0;
         while sent < spliced_in {
             match nix::fcntl::splice(
-                pipe_read.as_raw_fd(),
+                pipe_read.as_fd(),
                 None,
-                target_fd,
+                target_file.as_fd(),
                 None,
                 spliced_in - sent,
                 nix::fcntl::SpliceFFlags::SPLICE_F_MOVE | nix::fcntl::SpliceFFlags::SPLICE_F_MORE,
@@ -184,6 +187,7 @@ fn transfer_splice(
 fn transfer_sendfile(
     source: &Path,
     target: &Path,
+    block_size: usize,
     byte_limit: Option<u64>,
     progress: &Progress,
 ) -> Result<ZeroCopyResult> {
@@ -206,7 +210,11 @@ fn transfer_sendfile(
     let mut total: u64 = 0;
     let chunk_size: usize = 4 * 1024 * 1024; // 4 MiB per sendfile call
 
-    info!("Zero-copy sendfile: {} → {}", source.display(), target.display());
+    info!(
+        "Zero-copy sendfile: {} → {}",
+        source.display(),
+        target.display()
+    );
 
     loop {
         if progress.is_cancelled() {
@@ -226,10 +234,22 @@ fn transfer_sendfile(
             // SAFETY: sendfile() is called with valid file descriptors obtained from
             // std::fs::File. Error is checked immediately. No memory aliasing.
             let rc = unsafe {
-                libc::sendfile(source_fd, target_fd, offset as libc::off_t, &mut len, std::ptr::null_mut(), 0)
+                libc::sendfile(
+                    source_fd,
+                    target_fd,
+                    offset as libc::off_t,
+                    &mut len,
+                    std::ptr::null_mut(),
+                    0,
+                )
             };
             if rc == -1 && len == 0 {
                 let err = std::io::Error::last_os_error();
+                // sendfile(2) copies only into a socket. A regular-file destination
+                // fails with ENOTSOCK, so use the standard copy path instead.
+                if err.raw_os_error() == Some(libc::ENOTSOCK) {
+                    return transfer_fallback(source, target, block_size, byte_limit, progress);
+                }
                 if err.kind() == std::io::ErrorKind::Other {
                     break; // EOF or unsupported
                 }
@@ -250,7 +270,15 @@ fn transfer_sendfile(
             // SAFETY: sendfile() is called with valid file descriptors obtained from
             // std::fs::File. Error and byte count are checked immediately. No memory aliasing.
             let rc = unsafe {
-                libc::sendfile(source_fd, target_fd, offset as libc::off_t, count, std::ptr::null_mut(), &mut sbytes, 0)
+                libc::sendfile(
+                    source_fd,
+                    target_fd,
+                    offset as libc::off_t,
+                    count,
+                    std::ptr::null_mut(),
+                    &mut sbytes,
+                    0,
+                )
             };
             if rc == -1 && sbytes == 0 {
                 break;
@@ -379,8 +407,7 @@ mod tests {
         let target = NamedTempFile::new().unwrap();
         let progress = Progress::new(4096);
 
-        let result =
-            transfer(source.path(), target.path(), 1024, Some(4096), &progress).unwrap();
+        let result = transfer(source.path(), target.path(), 1024, Some(4096), &progress).unwrap();
         assert_eq!(result.bytes_transferred, 4096);
 
         let written = std::fs::read(target.path()).unwrap();

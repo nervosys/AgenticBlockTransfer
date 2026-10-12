@@ -80,10 +80,12 @@ fn rand_session_id() -> u32 {
     use std::hash::{BuildHasher, Hasher};
     let s = RandomState::new();
     let mut h = s.build_hasher();
-    h.write_u64(std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos() as u64);
+    h.write_u64(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos() as u64,
+    );
     h.finish() as u32
 }
 
@@ -159,8 +161,12 @@ fn decode_data_packet(pkt: &[u8]) -> Result<(u32, u64, u64, u32, Vec<u8>)> {
     }
 
     let session_id = u32::from_be_bytes([pkt[1], pkt[2], pkt[3], pkt[4]]);
-    let sequence = u64::from_be_bytes([pkt[5], pkt[6], pkt[7], pkt[8], pkt[9], pkt[10], pkt[11], pkt[12]]);
-    let total = u64::from_be_bytes([pkt[13], pkt[14], pkt[15], pkt[16], pkt[17], pkt[18], pkt[19], pkt[20]]);
+    let sequence = u64::from_be_bytes([
+        pkt[5], pkt[6], pkt[7], pkt[8], pkt[9], pkt[10], pkt[11], pkt[12],
+    ]);
+    let total = u64::from_be_bytes([
+        pkt[13], pkt[14], pkt[15], pkt[16], pkt[17], pkt[18], pkt[19], pkt[20],
+    ]);
     let crc = u32::from_be_bytes([pkt[21], pkt[22], pkt[23], pkt[24]]);
     let data = pkt[CHUNK_HEADER_SIZE..].to_vec();
 
@@ -214,7 +220,7 @@ pub fn send_image(
 
     let total_size = image_data.len() as u64;
     let chunk_size = config.chunk_size.min(MAX_CHUNK_DATA);
-    let total_chunks = (total_size + chunk_size as u64 - 1) / chunk_size as u64;
+    let total_chunks = total_size.div_ceil(chunk_size as u64);
 
     // Create UDP socket
     let socket = UdpSocket::bind(SocketAddr::new(config.bind_addr.into(), 0))
@@ -227,7 +233,8 @@ pub fn send_image(
     let start = Instant::now();
 
     // Calculate image hash
-    let hash = blake3::hash(&image_data).to_hex().to_string();
+    use ironcrypto::prelude::Digest;
+    let hash = hex::encode(ironcrypto::hash::Sha256::digest(&image_data));
 
     // Send announcement
     let announce = SessionAnnounce {
@@ -341,8 +348,9 @@ pub fn receive_image(
 
         let (len, _src) = match socket.recv_from(&mut buf) {
             Ok(r) => r,
-            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock
-                || e.kind() == std::io::ErrorKind::TimedOut =>
+            Err(e)
+                if e.kind() == std::io::ErrorKind::WouldBlock
+                    || e.kind() == std::io::ErrorKind::TimedOut =>
             {
                 continue;
             }
@@ -531,8 +539,8 @@ mod tests {
 
     #[test]
     fn test_max_chunk_data_fits_mtu() {
-        assert!(MAX_CHUNK_DATA + CHUNK_HEADER_SIZE <= MAX_PAYLOAD);
-        assert!(MAX_PAYLOAD <= 1400);
+        const _: () = assert!(MAX_CHUNK_DATA + CHUNK_HEADER_SIZE <= MAX_PAYLOAD);
+        const _: () = assert!(MAX_PAYLOAD <= 1400);
     }
 
     #[test]

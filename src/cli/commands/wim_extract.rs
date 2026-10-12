@@ -19,7 +19,10 @@ pub async fn execute(opts: WimExtractOpts) -> Result<()> {
                 println!("  Version:     0x{:X}", summary.version);
                 println!("  Images:      {}", summary.image_count);
                 if summary.total_parts > 1 {
-                    println!("  Part:        {} of {}", summary.part_number, summary.total_parts);
+                    println!(
+                        "  Part:        {} of {}",
+                        summary.part_number, summary.total_parts
+                    );
                 }
                 for img in &summary.images {
                     println!("  Image {}:", img.index);
@@ -67,11 +70,8 @@ pub async fn execute(opts: WimExtractOpts) -> Result<()> {
                 ..Default::default()
             };
 
-            let result = wim_extract::extract(
-                Path::new(&opts.wim_file),
-                Path::new(output_dir),
-                &options,
-            )?;
+            let result =
+                wim_extract::extract(Path::new(&opts.wim_file), Path::new(output_dir), &options)?;
 
             if opts.json {
                 println!("{}", serde_json::to_string_pretty(&result)?);
@@ -101,7 +101,10 @@ pub async fn execute(opts: WimExtractOpts) -> Result<()> {
             let path = Path::new(&opts.wim_file);
             let is_wim = wim_extract::is_wim_file(path)?;
             if opts.json {
-                println!("{{\"is_wim\": {}, \"path\": \"{}\"}}", is_wim, opts.wim_file);
+                println!(
+                    "{{\"is_wim\": {}, \"path\": \"{}\"}}",
+                    is_wim, opts.wim_file
+                );
             } else if is_wim {
                 println!("{} is a valid WIM file", opts.wim_file);
             } else {

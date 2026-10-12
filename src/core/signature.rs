@@ -13,9 +13,12 @@
 #![allow(dead_code)]
 
 use anyhow::{Context, Result};
+use ironcrypto::hash::Sha256;
+use ironcrypto::pkix::PublicKeyInfo;
+use ironcrypto::prelude::Digest;
+use ironcrypto::rsa::RsaPublicKey;
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
 /// A public key for verification, stored as PEM-encoded RSA key.
@@ -60,8 +63,7 @@ impl KeyRing {
 
     /// Load a key ring from a JSON file.
     pub fn load(path: &Path) -> Result<Self> {
-        let content = std::fs::read_to_string(path)
-            .context("Failed to read key ring file")?;
+        let content = std::fs::read_to_string(path).context("Failed to read key ring file")?;
         serde_json::from_str(&content).context("Failed to parse key ring JSON")
     }
 
@@ -117,23 +119,33 @@ pub fn hash_bytes_sha256(data: &[u8]) -> Vec<u8> {
 
 /// Verify an RSA PKCS#1v1.5 signature over a SHA-256 digest.
 ///
-/// This is a simplified verification that validates the RSA signature structure
-/// without requiring a full ASN.1/X.509 stack. The signature must be:
-///   1. RSA PKCS#1 v1.5 with SHA-256
-///   2. Produced with a key whose public half matches `public_key_der`
-///
-/// For the initial implementation, this uses raw digest comparison — full
-/// RSA verification requires the `rsa` crate which can be added later.
+/// `data_hash` is the SHA-256 digest of the signed data. `public_key_pem` is an
+/// RSA SubjectPublicKeyInfo PEM. Returns `Ok(true)` only when the signature
+/// recovers to the expected `DigestInfo || data_hash` encoding, `Ok(false)` when
+/// it does not, and `Err` when the key or the digest is malformed.
 pub fn verify_rsa_sha256_signature(
     data_hash: &[u8],
     signature: &[u8],
     public_key_pem: &str,
 ) -> Result<bool> {
-    // Parse the PEM-encoded public key (extract base64 between markers)
-    let der = decode_pem_public_key(public_key_pem)?;
+    if data_hash.len() != SHA256_LEN {
+        anyhow::bail!(
+            "SHA-256 digest must be {} bytes, got {}",
+            SHA256_LEN,
+            data_hash.len()
+        );
+    }
 
-    // Extract the RSA modulus size
-    let key_size = extract_rsa_key_size(&der)?;
+    let der = decode_pem_public_key(public_key_pem)?;
+    let (modulus, exponent) = match PublicKeyInfo::from_der(&der) {
+        Ok(PublicKeyInfo::Rsa { modulus, exponent }) => (modulus, exponent),
+        Ok(_) => anyhow::bail!("Public key is not an RSA key"),
+        Err(e) => anyhow::bail!("Malformed public key: {}", e),
+    };
+    let key = RsaPublicKey::from_components(modulus, exponent)
+        .map_err(|e| anyhow::anyhow!("Unusable RSA public key: {}", e))?;
+
+    let key_size = key.size();
     if signature.len() != key_size {
         debug!(
             "Signature size mismatch: expected {} bytes, got {}",
@@ -143,41 +155,44 @@ pub fn verify_rsa_sha256_signature(
         return Ok(false);
     }
 
-    // PKCS#1 v1.5 SHA-256 DigestInfo prefix (DER encoded)
-    let digest_info_prefix: &[u8] = &[
-        0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
-        0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20,
-    ];
-
-    // Build expected PKCS#1 v1.5 padded message
-    // 0x00 0x01 [0xFF padding] 0x00 [DigestInfo]
-    let digest_info_len = digest_info_prefix.len() + data_hash.len();
-    let padding_len = key_size - 3 - digest_info_len;
-    if padding_len < 8 {
-        anyhow::bail!("Key too small for PKCS#1 v1.5 padding");
+    // RSAVP1 (RFC 8017 §5.2.2): recover the encoded message as s^e mod n.
+    let mut em = vec![0u8; key_size];
+    if key.raw_public(signature, &mut em).is_err() {
+        // s >= n has no valid representative, so it cannot be a signature.
+        return Ok(false);
     }
 
+    // EMSA-PKCS1-v1_5 (RFC 8017 §9.2): 0x00 0x01 PS 0x00 T, with PS at least
+    // 8 bytes of 0xFF and T = DigestInfo(SHA-256) || digest.
+    let t_len = SHA256_DIGEST_INFO.len() + SHA256_LEN;
+    if key_size < t_len + 11 {
+        anyhow::bail!("RSA key too small for a SHA-256 PKCS#1 v1.5 signature");
+    }
     let mut expected = Vec::with_capacity(key_size);
+    expected.extend_from_slice(&[0x00, 0x01]);
+    expected.resize(key_size - t_len - 1, 0xFF);
     expected.push(0x00);
-    expected.push(0x01);
-    expected.extend(std::iter::repeat(0xFF).take(padding_len));
-    expected.push(0x00);
-    expected.extend_from_slice(digest_info_prefix);
+    expected.extend_from_slice(&SHA256_DIGEST_INFO);
     expected.extend_from_slice(data_hash);
 
     debug!(
-        "Signature verification: key_size={}, hash_len={}, sig_len={}",
+        "Signature verification: key_size={}, sig_len={}",
         key_size,
-        data_hash.len(),
         signature.len()
     );
 
-    // Note: Full RSA verification requires modular exponentiation.
-    // This function builds the expected padding structure for validation.
-    // For production use with external signatures, integrate the `rsa` crate.
-    // For now, we validate the structure and report success for self-signed checks.
-    Ok(expected.len() == key_size)
+    // Public-key operation on public data, so a plain comparison is fine.
+    Ok(em == expected)
 }
+
+/// SHA-256 digest length in bytes.
+const SHA256_LEN: usize = 32;
+
+/// DER `DigestInfo` prefix for SHA-256 (RFC 8017 §9.2, Note 1).
+const SHA256_DIGEST_INFO: [u8; 19] = [
+    0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05,
+    0x00, 0x04, 0x20,
+];
 
 /// Decode a PEM-encoded public key to DER bytes.
 pub fn decode_pem_public_key(pem: &str) -> Result<Vec<u8>> {
@@ -200,7 +215,10 @@ pub fn decode_pem_public_key(pem: &str) -> Result<Vec<u8>> {
 fn base64_decode(input: &str) -> Result<Vec<u8>> {
     const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-    let input: Vec<u8> = input.bytes().filter(|&b| b != b'\n' && b != b'\r' && b != b' ').collect();
+    let input: Vec<u8> = input
+        .bytes()
+        .filter(|&b| b != b'\n' && b != b'\r' && b != b' ')
+        .collect();
     let mut output = Vec::with_capacity(input.len() * 3 / 4);
 
     for chunk in input.chunks(4) {
@@ -210,8 +228,11 @@ fn base64_decode(input: &str) -> Result<Vec<u8>> {
             if byte == b'=' {
                 break;
             }
-            buf[i] = TABLE.iter().position(|&c| c == byte)
-                .ok_or_else(|| anyhow::anyhow!("Invalid base64 character: {}", byte as char))? as u8;
+            buf[i] = TABLE
+                .iter()
+                .position(|&c| c == byte)
+                .ok_or_else(|| anyhow::anyhow!("Invalid base64 character: {}", byte as char))?
+                as u8;
             count = i + 1;
         }
         if count >= 2 {
@@ -226,25 +247,6 @@ fn base64_decode(input: &str) -> Result<Vec<u8>> {
     }
 
     Ok(output)
-}
-
-/// Extract RSA key size in bytes from DER-encoded SubjectPublicKeyInfo.
-fn extract_rsa_key_size(der: &[u8]) -> Result<usize> {
-    // SubjectPublicKeyInfo is a SEQUENCE containing:
-    //   AlgorithmIdentifier SEQUENCE
-    //   BIT STRING containing RSA public key
-    // We need to find the modulus to determine key size.
-    //
-    // For standard key sizes, use heuristics based on DER length:
-    if der.len() > 550 {
-        Ok(512) // 4096-bit key
-    } else if der.len() > 290 {
-        Ok(256) // 2048-bit key
-    } else if der.len() > 160 {
-        Ok(128) // 1024-bit key
-    } else {
-        anyhow::bail!("RSA key too small or unrecognized format (DER len={})", der.len())
-    }
 }
 
 /// Download a file and its detached signature, then verify.
@@ -538,22 +540,65 @@ mod tests {
         assert!(decode_pem_public_key(pem).is_err());
     }
 
+    /// RSA-2048 SubjectPublicKeyInfo for the signature vector below.
+    const TEST_PUB_PEM: &str = "-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3qUiCYxQW6nWYBavmvEs
+DlA9EUTE31ogVLxF674QKYX02zGAckC8DHqLO5GojWhY0INjzbCprHVRvO6Osaok
+jx5w5DGE7fbI0LvsQvN8gmLrKlMaXiTb6BvvMIpXw+ZjdfgYIq8vyl6Wdv/mEPqU
+mKZslhM9TO4Fy1dRUIPDLaNAYWnXmvHtphVf0B5KtoXFtixXWu8qEkuRnOe71IPj
+qdfsjV5qx+4ceiqDmcgbNZ366HXPuon5ca0664Y91+AKlkQE5nIzjtAHBOcK0OF3
+qyClxrv/tYf+9wrLGM2q+5SAN2pVdlcdOKCNnrOitm9zw8INpVzO5pL7Iy8SCT/w
+NwIDAQAB
+-----END PUBLIC KEY-----";
+
+    /// Message signed with OpenSSL (`openssl dgst -sha256 -sign`), so these tests
+    /// check against an independent implementation rather than IronCrypto itself.
+    const TEST_MSG: &[u8] = b"abt signature test vector\n";
+
+    /// PKCS#1 v1.5 SHA-256 signature of `TEST_MSG` under `TEST_PUB_PEM`.
+    const TEST_SIG_HEX: &str = "93adbd821bdc06fc46879a3b7574b430cb0c30a98f96a03213df149c3c4d62911470909d36ef33e9ca82e173f6593c954dc5eb809b422312bd4937c1fb02e74477fe31a833b3dc771db36fd00e01c06cc8cb328e94962e09983a9a89ffc63c14aa17d5a604986b52a6710e3f4558f505dcbf75987394cbb48990be4de9247fce3b87f286c50efb3c1b4dc10d1281c1df8b218f27447693abbfcecfc2fc2f53fb0a04a04f717ec05badc57455c355422f26b189c37128d70fec03e8d0db62a982c39c86e2066d85cfe4b463e2f4f30c69775ef06ab557120c9d5fcbc988eda242d5b2607a93d44f2c6f0185569d404c350d8915856c3c93801df76485e170429f";
+
     #[test]
-    fn test_extract_rsa_key_size_2048() {
-        let der = vec![0u8; 300]; // > 290 bytes
-        assert_eq!(extract_rsa_key_size(&der).unwrap(), 256);
+    fn test_verify_rsa_accepts_openssl_signature() {
+        let sig = hex::decode(TEST_SIG_HEX).unwrap();
+        let digest = hash_bytes_sha256(TEST_MSG);
+        assert!(verify_rsa_sha256_signature(&digest, &sig, TEST_PUB_PEM).unwrap());
     }
 
     #[test]
-    fn test_extract_rsa_key_size_4096() {
-        let der = vec![0u8; 600]; // > 550 bytes
-        assert_eq!(extract_rsa_key_size(&der).unwrap(), 512);
+    fn test_verify_rsa_rejects_other_message() {
+        let sig = hex::decode(TEST_SIG_HEX).unwrap();
+        let digest = hash_bytes_sha256(b"abt signature test vector!\n");
+        assert!(!verify_rsa_sha256_signature(&digest, &sig, TEST_PUB_PEM).unwrap());
     }
 
     #[test]
-    fn test_extract_rsa_key_size_too_small() {
-        let der = vec![0u8; 50];
-        assert!(extract_rsa_key_size(&der).is_err());
+    fn test_verify_rsa_rejects_tampered_signature() {
+        let mut sig = hex::decode(TEST_SIG_HEX).unwrap();
+        sig[100] ^= 0x01;
+        let digest = hash_bytes_sha256(TEST_MSG);
+        assert!(!verify_rsa_sha256_signature(&digest, &sig, TEST_PUB_PEM).unwrap());
+    }
+
+    #[test]
+    fn test_verify_rsa_rejects_wrong_length_signature() {
+        let sig = hex::decode(TEST_SIG_HEX).unwrap();
+        let digest = hash_bytes_sha256(TEST_MSG);
+        assert!(!verify_rsa_sha256_signature(&digest, &sig[..255], TEST_PUB_PEM).unwrap());
+    }
+
+    #[test]
+    fn test_verify_rsa_rejects_non_sha256_digest() {
+        let sig = hex::decode(TEST_SIG_HEX).unwrap();
+        assert!(verify_rsa_sha256_signature(&[0u8; 20], &sig, TEST_PUB_PEM).is_err());
+    }
+
+    #[test]
+    fn test_verify_rsa_rejects_malformed_key() {
+        let sig = hex::decode(TEST_SIG_HEX).unwrap();
+        let digest = hash_bytes_sha256(TEST_MSG);
+        let pem = "-----BEGIN PUBLIC KEY-----\nAAAA\n-----END PUBLIC KEY-----";
+        assert!(verify_rsa_sha256_signature(&digest, &sig, pem).is_err());
     }
 
     #[test]

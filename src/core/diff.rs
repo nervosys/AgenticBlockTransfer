@@ -133,12 +133,14 @@ pub fn diff_write(config: &DiffWriteConfig, progress: &Progress) -> Result<DiffW
         total_blocks += 1;
 
         // Compare
-        let blocks_match = source_n == target_n
-            && source_buf[..source_n] == target_buf[..target_n];
+        let blocks_match = source_n == target_n && source_buf[..source_n] == target_buf[..target_n];
 
         if blocks_match {
             skipped_blocks += 1;
-            debug!("Block {} at offset {} — identical, skipping", total_blocks, offset);
+            debug!(
+                "Block {} at offset {} — identical, skipping",
+                total_blocks, offset
+            );
         } else {
             written_blocks += 1;
             bytes_written += source_n as u64;
@@ -152,7 +154,11 @@ pub fn diff_write(config: &DiffWriteConfig, progress: &Progress) -> Result<DiffW
                 "Block {} at offset {} — differs, {}",
                 total_blocks,
                 offset,
-                if config.dry_run { "would write" } else { "writing" }
+                if config.dry_run {
+                    "would write"
+                } else {
+                    "writing"
+                }
             );
         }
 
@@ -272,21 +278,44 @@ pub fn format_diff_result(result: &DiffWriteResult) -> String {
     out.push_str("Differential Write Results\n");
     out.push_str(&"═".repeat(50));
     out.push('\n');
-    out.push_str(&format!("Total blocks examined:  {}\n", result.total_blocks));
-    out.push_str(&format!("Blocks written:        {}\n", result.written_blocks));
-    out.push_str(&format!("Blocks skipped:        {}\n", result.skipped_blocks));
-    out.push_str(&format!("Data written:          {:.1} MiB\n",
-        result.bytes_written as f64 / (1024.0 * 1024.0)));
-    out.push_str(&format!("Data examined:         {:.1} MiB\n",
-        result.bytes_examined as f64 / (1024.0 * 1024.0)));
-    out.push_str(&format!("Skip percentage:       {:.1}%\n", result.skip_percentage));
-    out.push_str(&format!("Duration:              {:.1} ms\n", result.duration_ms));
-    out.push_str(&format!("Effective throughput:   {:.1} MiB/s\n",
-        result.effective_throughput_mib_s));
+    out.push_str(&format!(
+        "Total blocks examined:  {}\n",
+        result.total_blocks
+    ));
+    out.push_str(&format!(
+        "Blocks written:        {}\n",
+        result.written_blocks
+    ));
+    out.push_str(&format!(
+        "Blocks skipped:        {}\n",
+        result.skipped_blocks
+    ));
+    out.push_str(&format!(
+        "Data written:          {:.1} MiB\n",
+        result.bytes_written as f64 / (1024.0 * 1024.0)
+    ));
+    out.push_str(&format!(
+        "Data examined:         {:.1} MiB\n",
+        result.bytes_examined as f64 / (1024.0 * 1024.0)
+    ));
+    out.push_str(&format!(
+        "Skip percentage:       {:.1}%\n",
+        result.skip_percentage
+    ));
+    out.push_str(&format!(
+        "Duration:              {:.1} ms\n",
+        result.duration_ms
+    ));
+    out.push_str(&format!(
+        "Effective throughput:   {:.1} MiB/s\n",
+        result.effective_throughput_mib_s
+    ));
 
     if let Some(verified) = result.verified {
-        out.push_str(&format!("Verification:          {}\n",
-            if verified { "PASSED" } else { "FAILED" }));
+        out.push_str(&format!(
+            "Verification:          {}\n",
+            if verified { "PASSED" } else { "FAILED" }
+        ));
     }
 
     out
@@ -295,7 +324,7 @@ pub fn format_diff_result(result: &DiffWriteResult) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+
     use tempfile::NamedTempFile;
 
     fn create_test_file(data: &[u8]) -> NamedTempFile {
@@ -369,10 +398,10 @@ mod tests {
     fn test_diff_write_partial_change() {
         // First block identical, second block different
         let mut source_data = vec![0xAAu8; 8192];
-        let mut target_data = vec![0xAAu8; 8192];
+        let target_data = vec![0xAAu8; 8192];
         // Change only the second block in source
-        for i in 4096..8192 {
-            source_data[i] = 0xCC;
+        for b in &mut source_data[4096..8192] {
+            *b = 0xCC;
         }
 
         let source = create_test_file(&source_data);

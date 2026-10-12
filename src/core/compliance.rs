@@ -29,8 +29,8 @@
 //!
 //! In FIPS mode:
 //! - Only SHA-256 and SHA-512 are permitted for hashing
-//! - MD5, SHA-1, BLAKE3, and CRC32 are rejected with errors
-//! - Device fingerprints use SHA-256 instead of BLAKE3
+//! - CRC32 is rejected with an error
+//! - Device fingerprints use SHA-256
 //! - Random data generation uses OS CSPRNG (not xorshift64)
 //! - TLS 1.2 minimum is enforced explicitly
 //! - Structured audit events are emitted for all security-relevant operations
@@ -52,9 +52,10 @@
 
 #![allow(dead_code)]
 
-use hmac::Mac;
+use ironcrypto::hash::Sha256;
+use ironcrypto::mac::HmacSha256;
+use ironcrypto::prelude::{Digest, Mac};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -73,8 +74,8 @@ static FIPS_MODE: AtomicBool = AtomicBool::new(false);
 ///
 /// # Effects
 /// - Restricts hash algorithms to SHA-256 and SHA-512 only
-/// - Device fingerprints use SHA-256 instead of BLAKE3
-/// - Rejects MD5, SHA-1, BLAKE3, CRC32 for integrity verification
+/// - Device fingerprints use SHA-256
+/// - Rejects CRC32 for integrity verification
 /// - Enforces TLS 1.2 minimum
 /// - Requires CSPRNG for random data generation
 pub fn enable_fips_mode() {
@@ -128,15 +129,12 @@ impl fmt::Display for FipsApprovalStatus {
 /// - FIPS 180-4: SHA-1, SHA-224, SHA-256, SHA-384, SHA-512 are approved
 /// - SP 800-131A Rev 2 (2019): SHA-1 deprecated for digital signatures
 ///   and most applications. SHA-256+ recommended.
-/// - MD5: Prohibited (RFC 6151, SP 800-131A)
-/// - BLAKE3: Not NIST-approved (no FIPS 180-4 listing)
 /// - CRC32: Not a cryptographic hash (no security properties)
+///
+/// MD5, SHA-1, and BLAKE3 are not offered at all.
 pub fn algorithm_fips_status(algo: HashAlgorithm) -> FipsApprovalStatus {
     match algo {
         HashAlgorithm::Sha256 | HashAlgorithm::Sha512 => FipsApprovalStatus::Approved,
-        HashAlgorithm::Sha1 => FipsApprovalStatus::Deprecated,
-        HashAlgorithm::Md5 => FipsApprovalStatus::NotApproved,
-        HashAlgorithm::Blake3 => FipsApprovalStatus::NotApproved,
         HashAlgorithm::Crc32 => FipsApprovalStatus::NotApproved,
     }
 }
@@ -177,13 +175,7 @@ pub fn validate_hash_algorithm(algo: HashAlgorithm) -> Result<(), String> {
                 Ok(())
             }
             FipsApprovalStatus::NotApproved => {
-                if algo == HashAlgorithm::Md5 {
-                    log::warn!(
-                        "COMPLIANCE WARNING: MD5 is cryptographically broken and \
-                         prohibited for integrity verification by FIPS 140 and \
-                         SP 800-131A. Use SHA-256 or SHA-512 for security-relevant hashing."
-                    );
-                } else if algo == HashAlgorithm::Crc32 {
+                if algo == HashAlgorithm::Crc32 {
                     log::warn!(
                         "COMPLIANCE WARNING: CRC32 is not a cryptographic hash and provides \
                          no collision resistance. Not suitable for integrity verification."
@@ -209,9 +201,6 @@ pub fn permitted_algorithms() -> Vec<HashAlgorithm> {
         vec![
             HashAlgorithm::Sha256,
             HashAlgorithm::Sha512,
-            HashAlgorithm::Sha1,
-            HashAlgorithm::Blake3,
-            HashAlgorithm::Md5,
             HashAlgorithm::Crc32,
         ]
     }
@@ -221,10 +210,9 @@ pub fn permitted_algorithms() -> Vec<HashAlgorithm> {
 // FIPS-Compliant Device Fingerprint (SHA-256)
 // ════════════════════════════════════════════════════════════════════════════════
 
-/// Compute a FIPS-approved device fingerprint using SHA-256 instead of BLAKE3.
+/// Compute a device fingerprint: SHA-256 truncated to 128 bits.
 ///
-/// Used in FIPS mode as a drop-in replacement for the BLAKE3-based
-/// `DeviceFingerprint::from_device()` in `safety.rs`.
+/// This is the token `DeviceFingerprint::from_device()` in `safety.rs` uses in every mode.
 ///
 /// # Reference
 /// - FIPS 180-4 (SHA-256)
@@ -664,10 +652,9 @@ impl AuditLog {
             "{}|{}|{}|{}|{}",
             self.last_hash, event.sequence, event.timestamp, event.event_type, event.outcome
         );
-        let mut mac = hmac::Hmac::<Sha256>::new_from_slice(&self.hmac_key)
-            .expect("HMAC key length is always valid");
+        let mut mac = HmacSha256::new(&self.hmac_key).expect("HMAC accepts any key length");
         mac.update(chain_input.as_bytes());
-        let hash = hex::encode(mac.finalize().into_bytes());
+        let hash = hex::encode(mac.finalize());
 
         event.integrity_hash = Some(hash.clone());
         self.last_hash = hash;
@@ -861,10 +848,10 @@ pub fn self_assessment() -> Vec<ComplianceFinding> {
         title: "Hash algorithm restrictions".into(),
         description: if fips {
             "FIPS mode active. Only SHA-256 and SHA-512 are permitted. \
-             MD5, SHA-1, BLAKE3, and CRC32 are rejected."
+             CRC32 is rejected."
                 .into()
         } else {
-            "Default mode. Non-FIPS algorithms (MD5, BLAKE3, CRC32) are available \
+            "Default mode. Non-FIPS algorithms (CRC32) are available \
              with deprecation warnings. Enable FIPS mode (--fips or ABT_FIPS_MODE=1) \
              to restrict to approved algorithms."
                 .into()
@@ -883,8 +870,9 @@ pub fn self_assessment() -> Vec<ComplianceFinding> {
         severity: ComplianceSeverity::NonCompliant,
         standard: "FIPS 140-2 / FIPS 140-3".into(),
         title: "No CMVP-validated cryptographic module".into(),
-        description: "Hash implementations (sha2, blake3 crates) and TLS (rustls) are \
-                      pure-Rust implementations without CMVP validation certificates. \
+        description: "Hash and MAC implementations (IronCrypto) and TLS (rustls) are \
+                      pure-Rust implementations without CMVP \
+                      validation certificates. \
                       FIPS 140-2/3 requires use of validated cryptographic modules."
             .into(),
         remediation: "Integrate aws-lc-rs (FIPS-validated) as the rustls crypto backend. \
@@ -1069,30 +1057,6 @@ mod tests {
     }
 
     #[test]
-    fn test_sha1_deprecated() {
-        assert_eq!(
-            algorithm_fips_status(HashAlgorithm::Sha1),
-            FipsApprovalStatus::Deprecated
-        );
-    }
-
-    #[test]
-    fn test_md5_not_approved() {
-        assert_eq!(
-            algorithm_fips_status(HashAlgorithm::Md5),
-            FipsApprovalStatus::NotApproved
-        );
-    }
-
-    #[test]
-    fn test_blake3_not_approved() {
-        assert_eq!(
-            algorithm_fips_status(HashAlgorithm::Blake3),
-            FipsApprovalStatus::NotApproved
-        );
-    }
-
-    #[test]
     fn test_crc32_not_approved() {
         assert_eq!(
             algorithm_fips_status(HashAlgorithm::Crc32),
@@ -1106,9 +1070,6 @@ mod tests {
         for algo in [
             HashAlgorithm::Sha256,
             HashAlgorithm::Sha512,
-            HashAlgorithm::Sha1,
-            HashAlgorithm::Md5,
-            HashAlgorithm::Blake3,
             HashAlgorithm::Crc32,
         ] {
             assert!(
@@ -1242,7 +1203,7 @@ mod tests {
     #[test]
     fn test_audit_chain_integrity() {
         // Record two events and verify they have different integrity hashes
-        let count_before = audit_event_count();
+        let _count_before = audit_event_count();
         record_audit_event(AuditEvent::new(
             AuditEventType::ComplianceEvent,
             AuditOutcome::Success,
@@ -1288,7 +1249,7 @@ mod tests {
     fn test_permitted_algorithms_default() {
         let algos = permitted_algorithms();
         assert!(algos.contains(&HashAlgorithm::Sha256));
-        assert!(algos.contains(&HashAlgorithm::Blake3));
+        assert!(algos.contains(&HashAlgorithm::Sha512));
     }
 
     #[test]

@@ -16,7 +16,7 @@ Legend: ✅ Done | 🔧 Partial | 🔲 Not started
 | Decompressing reader     | ✅      | gz, bz2, xz, zstd, zip — streaming with BufReader wrapping                                                                   |
 | Write engine             | ✅      | BufWriter, inline hashing, retry w/ backoff, spawn_blocking, O_DIRECT + FILE_FLAG_NO_BUFFERING                               |
 | Verification engine      | ✅      | Hash-based (no re-decompression), inline hash comparison                                                                     |
-| Hasher                   | ✅      | SHA-256, SHA-512, SHA-1, MD5, BLAKE3, CRC32 — trait-based dedup                                                              |
+| Hasher                   | ✅      | SHA-256, SHA-512, CRC32 — trait-based dedup                                                              |
 | Progress tracking        | ✅      | Fully lock-free AtomicU8/AtomicU64, no Mutex                                                                                 |
 | Device formatting        | ✅      | Platform-dispatched, no shell injection, input validation                                                                    |
 | Device abstraction       | ✅      | `DeviceEnumerator` trait, `DeviceInfo` struct                                                                                |
@@ -196,7 +196,7 @@ Gap analysis from reference projects (rufus, etcher, MediaWriter, rpi-imager, Ve
 | Resumable Downloads         | ✅      | HTTP Range resume with .part/.meta.json files, ETag/Last-Modified validation  |
 | Mirror Selection & Failover | ✅      | `abt mirror` — latency probing, failover, metalink (RFC 5854) parsing         |
 | Self-Update Checker         | ✅      | `abt update` — GitHub Releases API, semver compare, platform asset detection  |
-| Checksum File Parsing       | ✅      | `abt checksum-file` — SHA256SUMS/MD5SUMS auto-detect (GNU/BSD/simple formats) |
+| Checksum File Parsing       | ✅      | `abt checksum-file` — SHA256SUMS/SHA512SUMS auto-detect (GNU/BSD/simple formats) |
 | USB Speed Detection         | ✅      | `abt usb-info` — USB speed enum, degraded warnings, write-time estimates      |
 | Large FAT32 Formatter       | ✅      | FAT32 formatting for drives >32 GB with custom cluster sizes (up to 2 TiB)    |
 
@@ -263,7 +263,7 @@ NIST FIPS, CMMC 2.0 Level 2, and DoD compliance hardening; formal verification o
 | CMMC Audit Trail               | ✅      | HMAC-SHA256 integrity-chained event log, JSON-lines format, SIEM-ready                    |
 | FIPS Device Fingerprinting     | ✅      | SHA-256 replaces CRC32 for device tokens in FIPS mode (FIPS 180-4)                        |
 | TLS Hardening                  | ✅      | TLS 1.2 minimum, HTTPS-only URL validation in FIPS mode (SP 800-52 Rev 2)                 |
-| FIPS Algorithm Gate            | ✅      | Hash algorithm validation rejects MD5/CRC32/BLAKE3 in FIPS mode (SP 800-131A)             |
+| FIPS Algorithm Gate            | ✅      | Hash algorithm validation rejects CRC32 in FIPS mode; MD5, SHA-1, and BLAKE3 are removed (SP 800-131A)             |
 | Compliance Self-Assessment     | ✅      | `abt compliance` command — FIPS/CMMC/DoD checklist with JSON output for auditors          |
 | Formal Verification            | ✅      | 10 Safety Invariants (SI-1 – SI-10), Kani proof harnesses, compile-time static assertions |
 | Property-Based Testing         | ✅      | 24 proptest harnesses covering safety, hashing, progress, and device enumeration          |

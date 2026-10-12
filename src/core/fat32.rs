@@ -174,7 +174,10 @@ pub fn auto_cluster_size(total_bytes: u64) -> ClusterSize {
     let gib = total_bytes / (1024 * 1024 * 1024);
 
     if total_bytes > MAX_FAT32_SIZE {
-        warn!("Drive size {}B exceeds FAT32 max, using 64K clusters", total_bytes);
+        warn!(
+            "Drive size {}B exceeds FAT32 max, using 64K clusters",
+            total_bytes
+        );
         return ClusterSize::Kib64;
     }
 
@@ -215,7 +218,7 @@ pub fn available_cluster_sizes(total_bytes: u64) -> Vec<(ClusterSize, bool)> {
             let bytes = cs.bytes() as u64;
             // Cluster must be >= sector size and produce < 2^28 clusters
             let clusters = total_bytes / bytes;
-            clusters >= 65525 && clusters < 0x0FFFFFF7 && bytes >= 512
+            (65525..0x0FFFFFF7).contains(&clusters) && bytes >= 512
         })
         .map(|&cs| (cs, cs == auto))
         .collect()
@@ -250,12 +253,11 @@ pub fn calculate_fat32_params(opts: &Fat32FormatOpts) -> Result<Fat32FormatResul
     // For FAT32, RootDirSectors = 0
     let tmp_val1 = total_sectors - reserved_sectors as u32;
     let tmp_val2 = (128 * num_fats as u32) + sectors_per_cluster;
-    let fat_size_sectors = (tmp_val1 + tmp_val2 - 1) / tmp_val2;
+    let fat_size_sectors = tmp_val1.div_ceil(tmp_val2);
 
     // Total data sectors
-    let data_sectors = total_sectors
-        - reserved_sectors as u32
-        - (num_fats as u32 * fat_size_sectors);
+    let data_sectors =
+        total_sectors - reserved_sectors as u32 - (num_fats as u32 * fat_size_sectors);
 
     let total_clusters = data_sectors / sectors_per_cluster;
 
@@ -270,8 +272,8 @@ pub fn calculate_fat32_params(opts: &Fat32FormatOpts) -> Result<Fat32FormatResul
 
     // Generate volume serial number (based on date/time like DOS)
     let now = chrono::Utc::now();
-    let volume_serial = ((now.timestamp() & 0xFFFF) as u32) << 16
-        | ((now.timestamp_subsec_millis() & 0xFFFF) as u32);
+    let volume_serial =
+        ((now.timestamp() & 0xFFFF) as u32) << 16 | (now.timestamp_subsec_millis() & 0xFFFF);
 
     let data_capacity = total_clusters as u64 * cluster_bytes as u64;
 
@@ -304,33 +306,37 @@ pub fn build_boot_sector(opts: &Fat32FormatOpts, params: &Fat32FormatResult) -> 
     bs[3..11].copy_from_slice(BS_OEM_NAME);
 
     // BPB (BIOS Parameter Block)
-    bs[11..13].copy_from_slice(&(sector_size as u16).to_le_bytes());   // BytsPerSec
-    bs[13] = sectors_per_cluster;                                       // SecPerClus
+    bs[11..13].copy_from_slice(&(sector_size as u16).to_le_bytes()); // BytsPerSec
+    bs[13] = sectors_per_cluster; // SecPerClus
     bs[14..16].copy_from_slice(&params.reserved_sectors.to_le_bytes()); // RsvdSecCnt
-    bs[16] = params.num_fats;                                           // NumFATs
-    bs[17..19].copy_from_slice(&0u16.to_le_bytes());                   // RootEntCnt (0 for FAT32)
-    bs[19..21].copy_from_slice(&0u16.to_le_bytes());                   // TotSec16 (0 for FAT32)
-    bs[21] = if opts.removable { FAT_MEDIA_REMOVABLE } else { FAT_MEDIA_FIXED };
-    bs[22..24].copy_from_slice(&0u16.to_le_bytes());                   // FATSz16 (0 for FAT32)
-    bs[24..26].copy_from_slice(&63u16.to_le_bytes());                  // SecPerTrk
-    bs[26..28].copy_from_slice(&255u16.to_le_bytes());                 // NumHeads
-    bs[28..32].copy_from_slice(&0u32.to_le_bytes());                   // HiddSec
-    bs[32..36].copy_from_slice(&total_sectors.to_le_bytes());          // TotSec32
+    bs[16] = params.num_fats; // NumFATs
+    bs[17..19].copy_from_slice(&0u16.to_le_bytes()); // RootEntCnt (0 for FAT32)
+    bs[19..21].copy_from_slice(&0u16.to_le_bytes()); // TotSec16 (0 for FAT32)
+    bs[21] = if opts.removable {
+        FAT_MEDIA_REMOVABLE
+    } else {
+        FAT_MEDIA_FIXED
+    };
+    bs[22..24].copy_from_slice(&0u16.to_le_bytes()); // FATSz16 (0 for FAT32)
+    bs[24..26].copy_from_slice(&63u16.to_le_bytes()); // SecPerTrk
+    bs[26..28].copy_from_slice(&255u16.to_le_bytes()); // NumHeads
+    bs[28..32].copy_from_slice(&0u32.to_le_bytes()); // HiddSec
+    bs[32..36].copy_from_slice(&total_sectors.to_le_bytes()); // TotSec32
 
     // FAT32-specific BPB
     bs[36..40].copy_from_slice(&params.fat_size_sectors.to_le_bytes()); // FATSz32
-    bs[40..42].copy_from_slice(&0u16.to_le_bytes());                   // ExtFlags
-    bs[42..44].copy_from_slice(&0u16.to_le_bytes());                   // FSVer (0.0)
-    bs[44..48].copy_from_slice(&2u32.to_le_bytes());                   // RootClus (cluster 2)
-    bs[48..50].copy_from_slice(&1u16.to_le_bytes());                   // FSInfo (sector 1)
-    bs[50..52].copy_from_slice(&6u16.to_le_bytes());                   // BkBootSec (sector 6)
-    // bs[52..64] reserved (already zeroed)
+    bs[40..42].copy_from_slice(&0u16.to_le_bytes()); // ExtFlags
+    bs[42..44].copy_from_slice(&0u16.to_le_bytes()); // FSVer (0.0)
+    bs[44..48].copy_from_slice(&2u32.to_le_bytes()); // RootClus (cluster 2)
+    bs[48..50].copy_from_slice(&1u16.to_le_bytes()); // FSInfo (sector 1)
+    bs[50..52].copy_from_slice(&6u16.to_le_bytes()); // BkBootSec (sector 6)
+                                                     // bs[52..64] reserved (already zeroed)
 
     // Extended boot record
     bs[64] = 0x80; // DrvNum
     bs[65] = 0x00; // Reserved1
     bs[66] = 0x29; // BootSig
-    bs[67..71].copy_from_slice(&params.volume_serial.to_le_bytes());   // VolID
+    bs[67..71].copy_from_slice(&params.volume_serial.to_le_bytes()); // VolID
 
     // Volume label (11 bytes, padded with spaces)
     let mut label_bytes = [b' '; 11];
@@ -357,7 +363,7 @@ pub fn build_fsinfo_sector(params: &Fat32FormatResult) -> Vec<u8> {
     fs[484..488].copy_from_slice(&FAT32_FSINFO_SIGNATURE_2.to_le_bytes());
     fs[488..492].copy_from_slice(&(params.total_clusters - 1).to_le_bytes()); // Free cluster count
     fs[492..496].copy_from_slice(&3u32.to_le_bytes()); // Next free cluster hint
-    // bytes 496..508 reserved
+                                                       // bytes 496..508 reserved
     fs[508..512].copy_from_slice(&FAT32_FSINFO_SIGNATURE_3.to_le_bytes());
 
     fs
@@ -455,7 +461,11 @@ pub fn format_fat32<W: Write + Seek>(
         params.cluster_size, params.total_clusters, params.fat_size_sectors
     );
 
-    let media = if opts.removable { FAT_MEDIA_REMOVABLE } else { FAT_MEDIA_FIXED };
+    let media = if opts.removable {
+        FAT_MEDIA_REMOVABLE
+    } else {
+        FAT_MEDIA_FIXED
+    };
 
     // Write boot sector at sector 0
     let boot_sector = build_boot_sector(opts, &params);
@@ -489,8 +499,8 @@ pub fn format_fat32<W: Write + Seek>(
     let mut progress: u64 = 0;
 
     for fat_num in 0..params.num_fats {
-        let fat_start = params.reserved_sectors as u64
-            + (fat_num as u64 * params.fat_size_sectors as u64);
+        let fat_start =
+            params.reserved_sectors as u64 + (fat_num as u64 * params.fat_size_sectors as u64);
 
         for sector in 0..params.fat_size_sectors {
             let offset = (fat_start + sector as u64) * opts.sector_size as u64;
@@ -560,9 +570,18 @@ mod tests {
         assert_eq!(auto_cluster_size(100 * 1024 * 1024), ClusterSize::Kib1);
         assert_eq!(auto_cluster_size(200 * 1024 * 1024), ClusterSize::Kib2);
         assert_eq!(auto_cluster_size(4 * 1024 * 1024 * 1024), ClusterSize::Kib4);
-        assert_eq!(auto_cluster_size(10 * 1024 * 1024 * 1024), ClusterSize::Kib8);
-        assert_eq!(auto_cluster_size(20 * 1024 * 1024 * 1024), ClusterSize::Kib16);
-        assert_eq!(auto_cluster_size(64 * 1024 * 1024 * 1024), ClusterSize::Kib32);
+        assert_eq!(
+            auto_cluster_size(10 * 1024 * 1024 * 1024),
+            ClusterSize::Kib8
+        );
+        assert_eq!(
+            auto_cluster_size(20 * 1024 * 1024 * 1024),
+            ClusterSize::Kib16
+        );
+        assert_eq!(
+            auto_cluster_size(64 * 1024 * 1024 * 1024),
+            ClusterSize::Kib32
+        );
     }
 
     #[test]

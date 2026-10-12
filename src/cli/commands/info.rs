@@ -81,18 +81,16 @@ pub async fn execute(opts: InfoOpts) -> Result<()> {
         // If it's VHDX, show virtual disk metadata
         if matches!(info.format, crate::core::types::ImageFormat::Vhdx) {
             match std::fs::File::open(&path) {
-                Ok(mut f) => {
-                    match vhd::parse_vhdx(&mut f) {
-                        Ok(info) => {
-                            println!();
-                            println!("VHDX Metadata:");
-                            println!("  {}", info.summary());
-                        }
-                        Err(e) => {
-                            log::debug!("Could not parse VHDX metadata: {}", e);
-                        }
+                Ok(mut f) => match vhd::parse_vhdx(&mut f) {
+                    Ok(info) => {
+                        println!();
+                        println!("VHDX Metadata:");
+                        println!("  {}", info.summary());
                     }
-                }
+                    Err(e) => {
+                        log::debug!("Could not parse VHDX metadata: {}", e);
+                    }
+                },
                 Err(e) => {
                     log::debug!("Could not open VHDX file: {}", e);
                 }
@@ -167,13 +165,28 @@ pub async fn execute(opts: InfoOpts) -> Result<()> {
             humansize::format_size(dev.size, humansize::BINARY),
             dev.size
         );
-        println!("  Sector Size:     {} (physical: {})", dev.sector_size, dev.physical_sector_size);
+        println!(
+            "  Sector Size:     {} (physical: {})",
+            dev.sector_size, dev.physical_sector_size
+        );
         println!("  Type:            {}", dev.device_type);
         println!("  Transport:       {}", dev.transport);
-        println!("  Removable:       {}", if dev.removable { "Yes" } else { "No" });
-        println!("  Read-only:       {}", if dev.read_only { "Yes" } else { "No" });
-        println!("  System Drive:    {}", if dev.is_system { "Yes" } else { "No" });
-        println!("  Safe Target:     {}", if dev.is_safe_target() { "Yes" } else { "No" });
+        println!(
+            "  Removable:       {}",
+            if dev.removable { "Yes" } else { "No" }
+        );
+        println!(
+            "  Read-only:       {}",
+            if dev.read_only { "Yes" } else { "No" }
+        );
+        println!(
+            "  System Drive:    {}",
+            if dev.is_system { "Yes" } else { "No" }
+        );
+        println!(
+            "  Safe Target:     {}",
+            if dev.is_safe_target() { "Yes" } else { "No" }
+        );
         if !dev.mount_points.is_empty() {
             println!("  Mount Points:    {}", dev.mount_points.join(", "));
         }

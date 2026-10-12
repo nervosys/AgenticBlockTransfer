@@ -35,13 +35,13 @@ pub async fn execute(opts: WriteOpts, output_format: &OutputFormat) -> Result<()
     };
 
     let hash_algorithm = match opts.hash_algorithm.to_lowercase().as_str() {
-        "md5" => Some(HashAlgorithm::Md5),
-        "sha1" => Some(HashAlgorithm::Sha1),
         "sha256" => Some(HashAlgorithm::Sha256),
         "sha512" => Some(HashAlgorithm::Sha512),
-        "blake3" => Some(HashAlgorithm::Blake3),
         "crc32" => Some(HashAlgorithm::Crc32),
-        _ => Some(HashAlgorithm::Sha256),
+        other => anyhow::bail!(
+            "Unknown or unsupported hash algorithm: {} (supported: sha256, sha512, crc32)",
+            other
+        ),
     };
 
     let verify = opts.verify && !opts.no_verify;
@@ -72,7 +72,10 @@ pub async fn execute(opts: WriteOpts, output_format: &OutputFormat) -> Result<()
             eprintln!("Dry-run complete: all pre-flight checks passed.");
             std::process::exit(0);
         } else {
-            eprintln!("Dry-run complete: {} blocking error(s) found.", report.errors);
+            eprintln!(
+                "Dry-run complete: {} blocking error(s) found.",
+                report.errors
+            );
             std::process::exit(safety::ExitCode::SafetyCheckFailed.code());
         }
     }
@@ -108,9 +111,7 @@ pub async fn execute(opts: WriteOpts, output_format: &OutputFormat) -> Result<()
     }
 
     // ── Partition table backup ─────────────────────────────────────────────
-    if opts.backup_partition_table
-        || matches!(safety_level, SafetyLevel::High)
-    {
+    if opts.backup_partition_table || matches!(safety_level, SafetyLevel::High) {
         match safety::backup_partition_table(&opts.target).await {
             Ok(path) => {
                 eprintln!("  Partition table backed up: {}", path.display());
@@ -163,7 +164,10 @@ pub async fn execute(opts: WriteOpts, output_format: &OutputFormat) -> Result<()
             pb_clone.set_position(snap.bytes_written);
             pb_clone.set_message(format!("{}", snap.phase));
 
-            if matches!(snap.phase, OperationPhase::Completed | OperationPhase::Failed) {
+            if matches!(
+                snap.phase,
+                OperationPhase::Completed | OperationPhase::Failed
+            ) {
                 break;
             }
             tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;

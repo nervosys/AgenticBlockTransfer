@@ -30,7 +30,7 @@ pub struct ParallelDecompressConfig {
     pub queue_depth: usize,
     /// Compute hash inline during decompression.
     pub compute_hash: bool,
-    /// Hash algorithm name (sha256, blake3, etc.).
+    /// Hash algorithm name (sha256, sha512, etc.).
     pub hash_algorithm: String,
 }
 
@@ -181,7 +181,7 @@ impl Read for ParallelDecompressReader {
                     // Loop back to serve from this chunk
                 }
                 Ok(Err(e)) => {
-                    return Err(std::io::Error::new(std::io::ErrorKind::Other, e));
+                    return Err(std::io::Error::other(e));
                 }
                 Err(_) => {
                     // Channel closed — EOF

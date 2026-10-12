@@ -149,7 +149,9 @@ pub fn connect(config: &NbdConfig) -> Result<NbdReader> {
     info!("Connecting to NBD server at {}", addr);
 
     let stream = TcpStream::connect_timeout(
-        &addr.parse().with_context(|| format!("Invalid address: {}", addr))?,
+        &addr
+            .parse()
+            .with_context(|| format!("Invalid address: {}", addr))?,
         config.connect_timeout,
     )
     .with_context(|| format!("Failed to connect to NBD server at {}", addr))?;
@@ -248,7 +250,7 @@ impl NbdReader {
             self.stream.read_exact(&mut reply_hdr)?;
 
             let reply_magic = u64::from_be_bytes(reply_hdr[0..8].try_into().unwrap());
-            if reply_magic != 0x0003_e889_045565_a9u64 {
+            if reply_magic != 0x0003_e889_0455_65a9u64 {
                 // Not a valid reply magic — might be old protocol
                 debug!("NBD_OPT_GO not supported, falling back to EXPORT_NAME");
                 return Ok(false);
@@ -267,8 +269,7 @@ impl NbdReader {
             match reply_type {
                 NBD_REP_INFO => {
                     if reply_len >= 2 {
-                        let info_type =
-                            u16::from_be_bytes(reply_data[0..2].try_into().unwrap());
+                        let info_type = u16::from_be_bytes(reply_data[0..2].try_into().unwrap());
                         if info_type == NBD_INFO_EXPORT && reply_len >= 12 {
                             self.export_info.size =
                                 u64::from_be_bytes(reply_data[2..10].try_into().unwrap());
@@ -413,7 +414,7 @@ impl Read for NbdReader {
 
         let n = self
             .read_block(self.offset, request_len)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| io::Error::other(e.to_string()))?;
 
         self.offset += n as u64;
         self.buf_len = n;

@@ -169,10 +169,7 @@ impl SecurityAuditReport {
 
     pub fn format_text(&self) -> String {
         let mut out = String::new();
-        out.push_str(&format!(
-            "Security Audit Report — abt v{}\n",
-            self.version
-        ));
+        out.push_str(&format!("Security Audit Report — abt v{}\n", self.version));
         out.push_str(&format!("Timestamp: {}\n", self.timestamp));
         out.push_str(&format!(
             "Result: {}\n\n",
@@ -270,9 +267,9 @@ pub fn validate_path(path: &Path) -> Vec<SecurityFinding> {
         if let Some(stem) = path.file_stem() {
             let stem_upper = stem.to_string_lossy().to_uppercase();
             let reserved = [
-                "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6",
-                "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6",
-                "LPT7", "LPT8", "LPT9",
+                "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7",
+                "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8",
+                "LPT9",
             ];
             if reserved.contains(&stem_upper.as_str()) {
                 findings.push(SecurityFinding::new(
@@ -471,7 +468,9 @@ pub fn validate_device_path(path: &str) -> Vec<SecurityFinding> {
     }
 
     // Check for shell metacharacters that could enable injection
-    let dangerous_chars = ['|', ';', '&', '$', '`', '(', ')', '{', '}', '<', '>', '!', '~'];
+    let dangerous_chars = [
+        '|', ';', '&', '$', '`', '(', ')', '{', '}', '<', '>', '!', '~',
+    ];
     for ch in dangerous_chars {
         if path.contains(ch) {
             findings.push(SecurityFinding::new(
@@ -704,10 +703,7 @@ impl FileSnapshot {
             size: meta.len(),
             modified: meta
                 .modified()
-                .map(|t| {
-                    chrono::DateTime::<chrono::Utc>::from(t)
-                        .to_rfc3339()
-                })
+                .map(|t| chrono::DateTime::<chrono::Utc>::from(t).to_rfc3339())
                 .unwrap_or_else(|_| "unknown".to_string()),
             is_symlink: sym_meta.file_type().is_symlink(),
             is_file: meta.is_file(),
@@ -754,10 +750,7 @@ impl FileSnapshot {
                         Severity::High,
                         SecurityCategory::RaceCondition,
                         "File modified (TOCTOU)",
-                        &format!(
-                            "File {} was modified between check and use",
-                            path.display()
-                        ),
+                        &format!("File {} was modified between check and use", path.display()),
                         "Re-validate the file before proceeding",
                     ));
                 }
@@ -799,11 +792,7 @@ impl FileSnapshot {
                     Severity::High,
                     SecurityCategory::RaceCondition,
                     "File disappeared (TOCTOU)",
-                    &format!(
-                        "File {} no longer accessible: {}",
-                        path.display(),
-                        e
-                    ),
+                    &format!("File {} no longer accessible: {}", path.display(), e),
                     "The file was removed between check and use",
                 ));
             }
@@ -838,7 +827,7 @@ pub fn validate_hash_format(hash_str: &str) -> Vec<SecurityFinding> {
     let algo = parts[0].to_lowercase();
     let hex_value = parts[1];
 
-    let valid_algos = ["sha256", "sha512", "sha1", "md5", "blake3", "crc32"];
+    let valid_algos = ["sha256", "sha512", "crc32"];
     if !valid_algos.contains(&algo.as_str()) {
         findings.push(SecurityFinding::new(
             "SEC-061",
@@ -869,9 +858,6 @@ pub fn validate_hash_format(hash_str: &str) -> Vec<SecurityFinding> {
     let expected_len = match algo.as_str() {
         "sha256" => Some(64),
         "sha512" => Some(128),
-        "sha1" => Some(40),
-        "md5" => Some(32),
-        "blake3" => Some(64),
         "crc32" => Some(8),
         _ => None,
     };
@@ -1167,7 +1153,11 @@ mod tests {
     fn validate_hash_valid_sha256() {
         let hash = format!("sha256:{}", "a".repeat(64));
         let findings = validate_hash_format(&hash);
-        assert!(findings.is_empty(), "Valid SHA-256 should pass: {:?}", findings);
+        assert!(
+            findings.is_empty(),
+            "Valid SHA-256 should pass: {:?}",
+            findings
+        );
     }
 
     #[test]
@@ -1226,7 +1216,11 @@ mod tests {
 
         let snap = FileSnapshot::capture(&file_path).unwrap();
         let findings = snap.verify(&file_path);
-        assert!(findings.is_empty(), "Unchanged file should pass: {:?}", findings);
+        assert!(
+            findings.is_empty(),
+            "Unchanged file should pass: {:?}",
+            findings
+        );
     }
 
     #[test]
@@ -1263,10 +1257,11 @@ mod tests {
     fn run_audit_clean() {
         let report = run_audit(None, None, None, None);
         // May have privilege findings but no path/url/hash issues
-        assert!(report.findings.iter().all(|f| {
-            f.category == SecurityCategory::PrivilegeEscalation
-                || f.severity <= Severity::Low
-        }) || report.findings.is_empty());
+        assert!(
+            report.findings.iter().all(|f| {
+                f.category == SecurityCategory::PrivilegeEscalation || f.severity <= Severity::Low
+            }) || report.findings.is_empty()
+        );
     }
 
     #[test]

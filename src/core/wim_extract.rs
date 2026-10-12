@@ -14,11 +14,10 @@
 #![allow(dead_code)]
 
 use anyhow::{bail, Context, Result};
-use log::{debug, error, info, warn};
+use log::{debug, info};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::io::{Read, Seek, SeekFrom};
-use std::path::{Path, PathBuf};
+use std::io::Read;
+use std::path::Path;
 
 /// WIM compression type (from header flags).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -301,10 +300,7 @@ pub fn read_wim_header(path: &Path) -> Result<WimSummary> {
 
 /// List files inside a WIM image (simulated for now — real implementation
 /// would parse the WIM metadata resource and directory entries).
-pub fn list_files(
-    _wim_path: &Path,
-    options: &ExtractOptions,
-) -> Result<Vec<WimFileEntry>> {
+pub fn list_files(_wim_path: &Path, options: &ExtractOptions) -> Result<Vec<WimFileEntry>> {
     info!("Listing files from WIM image index {}", options.image_index);
 
     // In a full implementation, this would:
@@ -314,7 +310,9 @@ pub fn list_files(
     // 4. Apply include/exclude filters
     //
     // For now, we return an empty list to indicate the API shape.
-    debug!("WIM file listing requires metadata resource parsing (not yet implemented for extraction)");
+    debug!(
+        "WIM file listing requires metadata resource parsing (not yet implemented for extraction)"
+    );
 
     Ok(Vec::new())
 }
@@ -416,18 +414,21 @@ pub fn extract(
 fn should_skip(entry: &WimFileEntry, options: &ExtractOptions) -> bool {
     // Include filter
     if !options.include_patterns.is_empty() {
-        let matched = options.include_patterns.iter().any(|pat| {
-            glob_match(pat, &entry.path)
-        });
+        let matched = options
+            .include_patterns
+            .iter()
+            .any(|pat| glob_match(pat, &entry.path));
         if !matched {
             return true;
         }
     }
 
     // Exclude filter
-    if options.exclude_patterns.iter().any(|pat| {
-        glob_match(pat, &entry.path)
-    }) {
+    if options
+        .exclude_patterns
+        .iter()
+        .any(|pat| glob_match(pat, &entry.path))
+    {
         return true;
     }
 
@@ -459,12 +460,8 @@ fn glob_match_recursive(pattern: &[u8], text: &[u8]) -> bool {
             }
             false
         }
-        b'?' => {
-            !text.is_empty() && glob_match_recursive(&pattern[1..], &text[1..])
-        }
-        ch => {
-            !text.is_empty() && text[0] == ch && glob_match_recursive(&pattern[1..], &text[1..])
-        }
+        b'?' => !text.is_empty() && glob_match_recursive(&pattern[1..], &text[1..]),
+        ch => !text.is_empty() && text[0] == ch && glob_match_recursive(&pattern[1..], &text[1..]),
     }
 }
 
@@ -543,7 +540,9 @@ mod tests {
         assert_eq!(WimCompression::Xpress.to_string(), "XPRESS");
         assert_eq!(WimCompression::Lzx.to_string(), "LZX");
         assert_eq!(WimCompression::Lzms.to_string(), "LZMS");
-        assert!(WimCompression::Unknown(0xFF).to_string().contains("Unknown"));
+        assert!(WimCompression::Unknown(0xFF)
+            .to_string()
+            .contains("Unknown"));
     }
 
     #[test]
@@ -663,8 +662,14 @@ mod tests {
 
     #[test]
     fn test_glob_match_complex() {
-        assert!(glob_match("windows/system32/*.dll", "Windows/System32/kernel32.dll"));
-        assert!(!glob_match("windows/system32/*.dll", "Windows/System32/drivers/test.dll"));
+        assert!(glob_match(
+            "windows/system32/*.dll",
+            "Windows/System32/kernel32.dll"
+        ));
+        assert!(!glob_match(
+            "windows/system32/*.dll",
+            "Windows/System32/drivers/test.dll"
+        ));
     }
 
     #[test]
@@ -794,7 +799,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.txt");
         std::fs::write(&path, b"hello world").unwrap();
-        assert_eq!(is_wim_file(&path).unwrap(), false);
+        assert!(!is_wim_file(&path).unwrap());
     }
 
     #[test]
@@ -805,7 +810,7 @@ mod tests {
         data.extend_from_slice(WIM_MAGIC);
         data.extend_from_slice(&[0u8; 100]);
         std::fs::write(&path, &data).unwrap();
-        assert_eq!(is_wim_file(&path).unwrap(), true);
+        assert!(is_wim_file(&path).unwrap());
     }
 
     #[test]

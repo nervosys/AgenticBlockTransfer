@@ -23,8 +23,7 @@ const GPT_SIGNATURE: [u8; 8] = *b"EFI PART";
 
 /// EFI System Partition GUID: C12A7328-F81F-11D2-BA4B-00A0C93EC93B
 const ESP_TYPE_GUID: [u8; 16] = [
-    0x28, 0x73, 0x2A, 0xC1, 0x1F, 0xF8, 0xD2, 0x11, 0xBA, 0x4B, 0x00, 0xA0, 0xC9, 0x3E, 0xC9,
-    0x3B,
+    0x28, 0x73, 0x2A, 0xC1, 0x1F, 0xF8, 0xD2, 0x11, 0xBA, 0x4B, 0x00, 0xA0, 0xC9, 0x3E, 0xC9, 0x3B,
 ];
 
 /// Boot sector validation result.
@@ -185,10 +184,7 @@ pub fn validate_boot_sector(path: &Path) -> Result<BootValidation> {
             "GPT header (\"EFI PART\") found at LBA 1",
         ));
     } else if header.len() >= 520 {
-        checks.push(BootCheck::fail(
-            "gpt_header",
-            "No GPT header at LBA 1",
-        ));
+        checks.push(BootCheck::fail("gpt_header", "No GPT header at LBA 1"));
     }
 
     // Check 6: Look for EFI System Partition in GPT entries
@@ -241,7 +237,11 @@ pub fn validate_boot_sector(path: &Path) -> Result<BootValidation> {
         boot_scheme,
         passed,
         total,
-        if is_bootable { " | Device appears bootable" } else { "" }
+        if is_bootable {
+            " | Device appears bootable"
+        } else {
+            ""
+        }
     );
 
     Ok(BootValidation {
@@ -299,7 +299,10 @@ pub fn format_validation(validation: &BootValidation) -> String {
 
     for check in &validation.checks {
         let icon = if check.passed { "✓" } else { "✗" };
-        output.push_str(&format!("    {} {} — {}\n", icon, check.name, check.description));
+        output.push_str(&format!(
+            "    {} {} — {}\n",
+            icon, check.name, check.description
+        ));
     }
 
     output
@@ -319,8 +322,8 @@ mod tests {
         img[1] = 0x5A; // JMP +0x5A
 
         // Some boot code
-        for i in 2..446 {
-            img[i] = 0x90; // NOP sled
+        for b in &mut img[2..446] {
+            *b = 0x90; // NOP sled
         }
 
         // One partition entry (type 0x0C = FAT32 LBA)
@@ -367,9 +370,18 @@ mod tests {
         let result = validate_boot_sector(tmp.path()).unwrap();
         assert!(result.is_bootable);
         assert_eq!(result.boot_scheme, BootScheme::LegacyMbr);
-        assert!(result.checks.iter().any(|c| c.name == "mbr_signature" && c.passed));
-        assert!(result.checks.iter().any(|c| c.name == "mbr_boot_code" && c.passed));
-        assert!(result.checks.iter().any(|c| c.name == "boot_jump" && c.passed));
+        assert!(result
+            .checks
+            .iter()
+            .any(|c| c.name == "mbr_signature" && c.passed));
+        assert!(result
+            .checks
+            .iter()
+            .any(|c| c.name == "mbr_boot_code" && c.passed));
+        assert!(result
+            .checks
+            .iter()
+            .any(|c| c.name == "boot_jump" && c.passed));
     }
 
     #[test]
@@ -385,7 +397,10 @@ mod tests {
             result.boot_scheme,
             BootScheme::UefiGpt | BootScheme::Hybrid
         ));
-        assert!(result.checks.iter().any(|c| c.name == "gpt_header" && c.passed));
+        assert!(result
+            .checks
+            .iter()
+            .any(|c| c.name == "gpt_header" && c.passed));
         assert!(result
             .checks
             .iter()
@@ -421,8 +436,8 @@ mod tests {
         let mut img = create_gpt_image();
         // Add boot code to make it hybrid
         img[0] = 0xEB; // JMP
-        for i in 2..446 {
-            img[i] = 0x90; // NOP
+        for b in &mut img[2..446] {
+            *b = 0x90; // NOP
         }
 
         let mut tmp = NamedTempFile::new().unwrap();

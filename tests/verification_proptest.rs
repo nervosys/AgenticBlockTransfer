@@ -104,11 +104,8 @@ proptest! {
 
 fn arb_hash_algorithm() -> impl Strategy<Value = HashAlgorithm> {
     prop::sample::select(vec![
-        HashAlgorithm::Md5,
-        HashAlgorithm::Sha1,
         HashAlgorithm::Sha256,
         HashAlgorithm::Sha512,
-        HashAlgorithm::Blake3,
         HashAlgorithm::Crc32,
     ])
 }
@@ -184,11 +181,8 @@ proptest! {
         let hash = hash_reader(&mut Cursor::new(&data), algo, &progress).unwrap();
 
         let expected_len = match algo {
-            HashAlgorithm::Md5 => 32,      // 128 bits = 32 hex chars
-            HashAlgorithm::Sha1 => 40,     // 160 bits = 40 hex chars
             HashAlgorithm::Sha256 => 64,   // 256 bits = 64 hex chars
             HashAlgorithm::Sha512 => 128,  // 512 bits = 128 hex chars
-            HashAlgorithm::Blake3 => 64,   // 256 bits = 64 hex chars
             HashAlgorithm::Crc32 => 8,     // 32 bits = 8 hex chars
         };
 
@@ -372,7 +366,7 @@ proptest! {
         );
     }
 
-    /// SI-6: Token is always 32 hex characters (128-bit BLAKE3 truncation).
+    /// SI-6: Token is always 32 hex characters (128-bit SHA-256 truncation).
     #[test]
     fn si6_token_format(
         size in any::<u64>(),

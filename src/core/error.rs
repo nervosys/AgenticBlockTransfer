@@ -55,7 +55,6 @@ pub enum AbtError {
     ConfigError(String),
 
     // ── New variants for robust error handling ──────────────────────────
-
     #[error("Operation timed out after {elapsed_secs:.1}s")]
     Timeout { elapsed_secs: f64 },
 

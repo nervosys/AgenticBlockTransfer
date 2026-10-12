@@ -45,7 +45,9 @@ pub async fn execute(opts: ProcLockOpts) -> Result<()> {
                 if result.has_locks() {
                     println!();
                     if result.has_critical {
-                        println!("⚠  Critical system processes detected — cannot safely terminate.");
+                        println!(
+                            "⚠  Critical system processes detected — cannot safely terminate."
+                        );
                         println!("   Unmount the device or close applications manually.");
                     } else {
                         println!("Tip: Close the above applications or unmount the device before writing.");

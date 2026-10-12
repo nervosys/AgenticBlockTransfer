@@ -31,10 +31,7 @@ impl fmt::Display for DriveEvent {
         write!(
             f,
             "[{:>8}ms] {} {} via {}",
-            self.timestamp_ms,
-            self.event_type,
-            self.device.path,
-            self.adapter,
+            self.timestamp_ms, self.event_type, self.device.path, self.adapter,
         )
     }
 }
@@ -134,7 +131,11 @@ impl DeviceAdapter for UsbbootAdapter {
 
     fn is_available(&self) -> bool {
         // Available on platforms with USB host support
-        cfg!(any(target_os = "linux", target_os = "windows", target_os = "macos"))
+        cfg!(any(
+            target_os = "linux",
+            target_os = "windows",
+            target_os = "macos"
+        ))
     }
 }
 
@@ -239,10 +240,7 @@ impl DriveScanner {
     }
 
     /// Create scanner with custom adapters.
-    pub fn with_adapters(
-        config: ScannerConfig,
-        adapters: Vec<Box<dyn DeviceAdapter>>,
-    ) -> Self {
+    pub fn with_adapters(config: ScannerConfig, adapters: Vec<Box<dyn DeviceAdapter>>) -> Self {
         let (event_tx, _) = broadcast::channel(config.event_buffer_size);
         Self {
             config,
@@ -289,7 +287,10 @@ impl DriveScanner {
 
         // Compare with previous state
         let mut events = Vec::new();
-        let mut state = self.state.lock().map_err(|e| anyhow!("Lock poisoned: {}", e))?;
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|e| anyhow!("Lock poisoned: {}", e))?;
         let elapsed = state.start_time.elapsed().as_millis() as u64;
         state.scan_count += 1;
 
@@ -346,7 +347,10 @@ impl DriveScanner {
 
     /// Get current snapshot of detected devices.
     pub fn snapshot(&self) -> Result<ScanSnapshot> {
-        let state = self.state.lock().map_err(|e| anyhow!("Lock poisoned: {}", e))?;
+        let state = self
+            .state
+            .lock()
+            .map_err(|e| anyhow!("Lock poisoned: {}", e))?;
         Ok(ScanSnapshot {
             devices: state.devices.values().cloned().collect(),
             adapter_count: self.adapters.iter().filter(|a| a.is_available()).count(),
@@ -358,7 +362,10 @@ impl DriveScanner {
     /// Start continuous scanning in a background task.
     /// Returns a handle that can be used to stop the scanner.
     pub async fn start(&self) -> Result<ScanHandle> {
-        let mut state = self.state.lock().map_err(|e| anyhow!("Lock poisoned: {}", e))?;
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|e| anyhow!("Lock poisoned: {}", e))?;
         if state.running {
             return Err(anyhow!("Scanner is already running"));
         }
@@ -375,15 +382,15 @@ impl DriveScanner {
 
     /// Check if the scanner is currently running.
     pub fn is_running(&self) -> bool {
-        self.state
-            .lock()
-            .map(|s| s.running)
-            .unwrap_or(false)
+        self.state.lock().map(|s| s.running).unwrap_or(false)
     }
 
     /// Stop the scanner.
     pub fn stop(&self) -> Result<()> {
-        let mut state = self.state.lock().map_err(|e| anyhow!("Lock poisoned: {}", e))?;
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|e| anyhow!("Lock poisoned: {}", e))?;
         state.running = false;
         Ok(())
     }
@@ -435,17 +442,17 @@ pub struct ScanHandle {
 impl ScanHandle {
     /// Stop the scanner.
     pub fn stop(&self) -> Result<()> {
-        let mut state = self.state.lock().map_err(|e| anyhow!("Lock poisoned: {}", e))?;
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|e| anyhow!("Lock poisoned: {}", e))?;
         state.running = false;
         Ok(())
     }
 
     /// Check if the scanner is still running.
     pub fn is_running(&self) -> bool {
-        self.state
-            .lock()
-            .map(|s| s.running)
-            .unwrap_or(false)
+        self.state.lock().map(|s| s.running).unwrap_or(false)
     }
 }
 
@@ -526,20 +533,19 @@ mod tests {
         let usb2 = mock_device("/dev/sdc", "USB Drive 2", 16_000_000_000);
 
         let adapter = MockAdapter::new("mock", vec![usb1.clone(), usb2.clone()]);
-        let scanner = DriveScanner::with_adapters(
-            ScannerConfig::default(),
-            vec![Box::new(adapter)],
-        );
+        let scanner =
+            DriveScanner::with_adapters(ScannerConfig::default(), vec![Box::new(adapter)]);
 
         // First scan: both devices should be "attached"
         let events = scanner.scan_once().unwrap();
         assert_eq!(events.len(), 2);
-        assert!(events.iter().all(|e| e.event_type == DriveEventType::Attached));
+        assert!(events
+            .iter()
+            .all(|e| e.event_type == DriveEventType::Attached));
 
         // Second scan with same devices: no events
         let events = scanner.scan_once().unwrap();
         assert_eq!(events.len(), 0);
-
 
         // Snapshot should show 2 devices
         let snap = scanner.snapshot().unwrap();
@@ -552,10 +558,8 @@ mod tests {
         let usb1 = mock_device("/dev/sdb", "USB Drive 1", 8_000_000_000);
 
         let adapter = MockAdapter::new("mock", vec![usb1.clone()]);
-        let scanner = DriveScanner::with_adapters(
-            ScannerConfig::default(),
-            vec![Box::new(adapter)],
-        );
+        let scanner =
+            DriveScanner::with_adapters(ScannerConfig::default(), vec![Box::new(adapter)]);
 
         // Attach
         let events = scanner.scan_once().unwrap();
@@ -564,7 +568,7 @@ mod tests {
 
         // Now replace adapter with empty one to simulate removal
         // Since we can't replace, we'll test via state manipulation
-        let mut state = scanner.state.lock().unwrap();
+        let state = scanner.state.lock().unwrap();
         assert_eq!(state.devices.len(), 1);
         drop(state);
     }

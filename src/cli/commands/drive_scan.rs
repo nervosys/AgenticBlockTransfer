@@ -26,18 +26,13 @@ pub async fn execute(opts: DriveScanOpts) -> Result<()> {
             } else {
                 println!("Detected Drives ({}):", devices.len());
                 println!(
-                    "{:<20} {:<12} {:<16} {:<10} {}",
-                    "PATH", "SIZE", "VENDOR", "TYPE", "NAME"
+                    "{:<20} {:<12} {:<16} {:<10} NAME",
+                    "PATH", "SIZE", "VENDOR", "TYPE"
                 );
                 println!("{}", "-".repeat(72));
                 for dev in devices {
-                    let size_str =
-                        humansize::format_size(dev.size, humansize::BINARY);
-                    let dev_type = if dev.removable {
-                        "removable"
-                    } else {
-                        "fixed"
-                    };
+                    let size_str = humansize::format_size(dev.size, humansize::BINARY);
+                    let dev_type = if dev.removable { "removable" } else { "fixed" };
                     println!(
                         "{:<20} {:<12} {:<16} {:<10} {}",
                         dev.path, size_str, dev.vendor, dev_type, dev.name
@@ -58,22 +53,14 @@ pub async fn execute(opts: DriveScanOpts) -> Result<()> {
             let _handle = scanner.start().await?;
 
             println!("Watching for drive events (Ctrl+C to stop)...");
-            loop {
-                match rx.recv().await {
-                    Ok(event) => {
-                        if opts.json {
-                            println!("{}", serde_json::to_string(&event)?);
-                        } else {
-                            println!(
-                                "[{}ms] {:?}: {} ({})",
-                                event.timestamp_ms,
-                                event.event_type,
-                                event.device.name,
-                                event.device.path
-                            );
-                        }
-                    }
-                    Err(_) => break,
+            while let Ok(event) = rx.recv().await {
+                if opts.json {
+                    println!("{}", serde_json::to_string(&event)?);
+                } else {
+                    println!(
+                        "[{}ms] {:?}: {} ({})",
+                        event.timestamp_ms, event.event_type, event.device.name, event.device.path
+                    );
                 }
             }
         }
@@ -85,14 +72,10 @@ pub async fn execute(opts: DriveScanOpts) -> Result<()> {
             if opts.json {
                 println!("{}", serde_json::to_string_pretty(&snapshot)?);
             } else {
-                println!(
-                    "Snapshot ({}ms since start):",
-                    snapshot.timestamp_ms,
-                );
+                println!("Snapshot ({}ms since start):", snapshot.timestamp_ms,);
                 println!("  Drives: {}", snapshot.devices.len());
                 for dev in &snapshot.devices {
-                    let size_str =
-                        humansize::format_size(dev.size, humansize::BINARY);
+                    let size_str = humansize::format_size(dev.size, humansize::BINARY);
                     println!("    {} -- {} ({})", dev.path, dev.name, size_str);
                 }
             }

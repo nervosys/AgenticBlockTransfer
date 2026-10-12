@@ -121,17 +121,10 @@ impl Default for OutputConfig {
 /// Logging configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+#[derive(Default)]
 pub struct LoggingConfig {
     /// Path to log file (empty = disabled).
     pub log_file: String,
-}
-
-impl Default for LoggingConfig {
-    fn default() -> Self {
-        Self {
-            log_file: String::new(),
-        }
-    }
 }
 
 impl Config {
@@ -159,17 +152,18 @@ impl Config {
     /// Write the default configuration to the platform-specific path.
     /// Creates the parent directory if needed.
     pub fn write_default() -> Result<PathBuf> {
-        let path = config_path()
-            .ok_or_else(|| anyhow::anyhow!("Cannot determine config directory"))?;
+        let path =
+            config_path().ok_or_else(|| anyhow::anyhow!("Cannot determine config directory"))?;
 
         if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("Failed to create config directory: {}", parent.display()))?;
+            fs::create_dir_all(parent).with_context(|| {
+                format!("Failed to create config directory: {}", parent.display())
+            })?;
         }
 
         let default = Config::default();
-        let toml_str = toml::to_string_pretty(&default)
-            .context("Failed to serialize default config")?;
+        let toml_str =
+            toml::to_string_pretty(&default).context("Failed to serialize default config")?;
 
         fs::write(&path, &toml_str)
             .with_context(|| format!("Failed to write config file: {}", path.display()))?;
@@ -240,7 +234,7 @@ sparse = true
             write: WriteConfig {
                 block_size: "8M".to_string(),
                 verify: false,
-                hash_algorithm: "blake3".to_string(),
+                hash_algorithm: "sha256".to_string(),
                 direct_io: false,
                 sync: false,
                 sparse: true,

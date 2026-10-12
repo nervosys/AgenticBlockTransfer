@@ -72,6 +72,7 @@ impl DeviceInfo {
 }
 
 /// Trait for platform-specific device enumeration.
+#[allow(clippy::double_must_use)]
 #[async_trait::async_trait]
 pub trait DeviceEnumerator: Send + Sync {
     /// List all block devices on the system.

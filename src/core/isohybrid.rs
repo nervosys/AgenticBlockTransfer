@@ -20,7 +20,6 @@
 #![allow(dead_code)]
 
 use anyhow::{Context, Result};
-use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Read, Seek, SeekFrom};
 
 // ─── Constants ─────────────────────────────────────────────────────────────
@@ -334,9 +333,8 @@ pub fn detect<R: Read + Seek>(reader: &mut R) -> Result<IsoHybridInfo> {
         WriteMode::Either
     } else if is_hybrid {
         WriteMode::RawDd
-    } else if has_el_torito {
-        WriteMode::FileCopy
     } else {
+        // Plain El Torito and all other images are copied as-is.
         WriteMode::FileCopy
     };
 

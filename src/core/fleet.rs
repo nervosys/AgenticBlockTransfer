@@ -287,12 +287,7 @@ impl FleetSession {
     }
 
     /// Update the progress for a specific device.
-    pub fn update_progress(
-        &self,
-        device_index: usize,
-        bytes_written: u64,
-        speed_bps: u64,
-    ) {
+    pub fn update_progress(&self, device_index: usize, bytes_written: u64, speed_bps: u64) {
         let mut progress = self.progress.lock().unwrap();
         if let Some(p) = progress.get_mut(device_index) {
             p.bytes_written = bytes_written;

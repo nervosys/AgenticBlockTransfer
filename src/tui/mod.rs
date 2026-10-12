@@ -6,10 +6,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{
-    prelude::*,
-    widgets::*,
-};
+use ratatui::{prelude::*, widgets::*};
 use std::io;
 use std::path::PathBuf;
 
@@ -18,8 +15,8 @@ use crate::core::progress::{OperationPhase, Progress, ProgressSnapshot};
 
 /// Valid image file extensions for the TUI file browser filter.
 const IMAGE_EXTENSIONS: &[&str] = &[
-    "iso", "img", "raw", "bin", "dd", "dsk", "dmg", "vhd", "vhdx", "vmdk",
-    "qcow2", "wim", "ffu", "gz", "bz2", "xz", "zst", "zip",
+    "iso", "img", "raw", "bin", "dd", "dsk", "dmg", "vhd", "vhdx", "vmdk", "qcow2", "wim", "ffu",
+    "gz", "bz2", "xz", "zst", "zip",
 ];
 
 /// A single entry in the file browser.
@@ -113,11 +110,16 @@ impl App {
 
             let path = entry.path();
             let meta = entry.metadata().ok();
-            let is_dir = meta.as_ref().map_or(false, |m| m.is_dir());
+            let is_dir = meta.as_ref().is_some_and(|m| m.is_dir());
             let size = meta.as_ref().map_or(0, |m| m.len());
 
             if is_dir {
-                dirs.push(BrowserEntry { name, path, is_dir, size });
+                dirs.push(BrowserEntry {
+                    name,
+                    path,
+                    is_dir,
+                    size,
+                });
             } else {
                 // Filter files: only show disk image extensions
                 let ext = path
@@ -126,14 +128,19 @@ impl App {
                     .unwrap_or("")
                     .to_lowercase();
                 if IMAGE_EXTENSIONS.contains(&ext.as_str()) {
-                    files.push(BrowserEntry { name, path, is_dir, size });
+                    files.push(BrowserEntry {
+                        name,
+                        path,
+                        is_dir,
+                        size,
+                    });
                 }
             }
         }
 
         // Sort alphabetically (case-insensitive)
-        dirs.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
-        files.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+        dirs.sort_by_key(|a| a.name.to_lowercase());
+        files.sort_by_key(|a| a.name.to_lowercase());
 
         // Directories first, then image files
         self.browser_entries.extend(dirs);
@@ -309,15 +316,13 @@ fn handle_device_select(app: &mut App, key: KeyCode) {
                 app.selected_device += 1;
             }
         }
-        KeyCode::Enter => {
-            if !app.devices.is_empty() {
-                let dev = &app.devices[app.selected_device];
-                if dev.is_system {
-                    app.status_message = "Cannot write to system drive!".to_string();
-                } else {
-                    app.state = AppState::Confirm;
-                    app.status_message = "Press 'y' to confirm, 'n' to go back".to_string();
-                }
+        KeyCode::Enter if !app.devices.is_empty() => {
+            let dev = &app.devices[app.selected_device];
+            if dev.is_system {
+                app.status_message = "Cannot write to system drive!".to_string();
+            } else {
+                app.state = AppState::Confirm;
+                app.status_message = "Press 'y' to confirm, 'n' to go back".to_string();
             }
         }
         _ => {}
@@ -344,7 +349,7 @@ fn ui(f: &mut Frame, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),  // Title
+            Constraint::Length(3), // Title
             Constraint::Min(10),   // Main content
             Constraint::Length(3), // Status bar
             Constraint::Length(3), // Help
@@ -355,10 +360,7 @@ fn ui(f: &mut Frame, app: &App) {
     let title = Block::default()
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Cyan))
-        .title(format!(
-            " abt v{} ",
-            env!("CARGO_PKG_VERSION")
-        ))
+        .title(format!(" abt v{} ", env!("CARGO_PKG_VERSION")))
         .title_alignment(Alignment::Center);
     f.render_widget(title, chunks[0]);
 
@@ -381,8 +383,12 @@ fn ui(f: &mut Frame, app: &App) {
 
     // Help
     let help_text = match app.state {
-        AppState::SelectSource => "Type path to image | Tab: browse files | Enter: confirm | Esc: quit",
-        AppState::BrowseFile => "↑/↓: navigate | Enter: open/select | Backspace: parent dir | h: hidden | Esc: back",
+        AppState::SelectSource => {
+            "Type path to image | Tab: browse files | Enter: confirm | Esc: quit"
+        }
+        AppState::BrowseFile => {
+            "↑/↓: navigate | Enter: open/select | Backspace: parent dir | h: hidden | Esc: back"
+        }
         AppState::SelectDevice => "↑/↓: navigate | Enter: select | Esc: back",
         AppState::Confirm => "y: confirm write | n: go back | Esc: quit",
         AppState::Writing => "Writing in progress...",
@@ -438,10 +444,7 @@ fn render_source_input(f: &mut Frame, app: &App, area: Rect) {
 fn render_file_browser(f: &mut Frame, app: &App, area: Rect) {
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(format!(
-            " Browse: {} ",
-            app.browser_path.to_string_lossy()
-        ))
+        .title(format!(" Browse: {} ", app.browser_path.to_string_lossy()))
         .border_style(Style::default().fg(Color::Green));
 
     let inner = block.inner(area);
@@ -506,7 +509,11 @@ fn render_file_browser(f: &mut Frame, app: &App, area: Rect) {
 
 fn render_device_list(f: &mut Frame, app: &App, area: Rect) {
     let header = Row::new(vec!["Device", "Name", "Size", "Type", "Removable"])
-        .style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
+        .style(
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        )
         .bottom_margin(1);
 
     let rows: Vec<Row> = app
@@ -518,7 +525,9 @@ fn render_device_list(f: &mut Frame, app: &App, area: Rect) {
             let style = if dev.is_system {
                 Style::default().fg(Color::Red)
             } else if i == app.selected_device {
-                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default()
             };
@@ -626,8 +635,8 @@ fn render_progress(f: &mut Frame, app: &App, area: Rect) {
         ])
         .split(inner);
 
-    let phase = Paragraph::new(format!("  Phase: {}", snap.phase))
-        .style(Style::default().fg(Color::White));
+    let phase =
+        Paragraph::new(format!("  Phase: {}", snap.phase)).style(Style::default().fg(Color::White));
     f.render_widget(phase, chunks[0]);
 
     let gauge = Gauge::default()
@@ -682,9 +691,7 @@ fn render_error(f: &mut Frame, msg: &str, area: Rect) {
         Line::from(""),
         Line::from(Span::styled(
             "  ✗ Write failed!",
-            Style::default()
-                .fg(Color::Red)
-                .add_modifier(Modifier::BOLD),
+            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
         Line::from(format!("  Error: {}", msg)),

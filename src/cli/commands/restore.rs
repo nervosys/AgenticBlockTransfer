@@ -31,7 +31,10 @@ pub async fn execute(opts: RestoreOpts) -> Result<()> {
                 println!("  Table:      {}", plan.table_type);
                 println!("  Filesystem: {}", plan.filesystem);
                 println!("  Label:      {}", plan.label);
-                println!("  Wipe:       {}", if plan.will_wipe { "Yes" } else { "No" });
+                println!(
+                    "  Wipe:       {}",
+                    if plan.will_wipe { "Yes" } else { "No" }
+                );
                 println!();
                 if !plan.warnings.is_empty() {
                     println!("Warnings:");
@@ -67,7 +70,10 @@ pub async fn execute(opts: RestoreOpts) -> Result<()> {
                 println!();
                 println!("Steps:");
                 for step in &result.steps {
-                    println!("  [{}] {} ({} ms)", step.status, step.name, step.duration_ms);
+                    println!(
+                        "  [{}] {} ({} ms)",
+                        step.status, step.name, step.duration_ms
+                    );
                     if let Some(ref detail) = step.detail {
                         println!("       {}", detail);
                     }
@@ -75,10 +81,7 @@ pub async fn execute(opts: RestoreOpts) -> Result<()> {
             }
         }
         other => {
-            anyhow::bail!(
-                "Unknown action: '{}'. Use 'plan' or 'execute'.",
-                other
-            );
+            anyhow::bail!("Unknown action: '{}'. Use 'plan' or 'execute'.", other);
         }
     }
 

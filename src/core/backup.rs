@@ -3,8 +3,9 @@
 // Inspired by Rufus's drive-to-VHD backup feature.
 
 use anyhow::{anyhow, Result};
+use ironcrypto::hash::Sha256;
+use ironcrypto::prelude::Digest;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::fmt;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
@@ -118,8 +119,8 @@ impl BackupResult {
     /// Format the result as human-readable text.
     pub fn format_text(&self) -> String {
         let mut out = String::new();
-        out.push_str(&format!("Backup Complete\n"));
-        out.push_str(&format!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"));
+        out.push_str("Backup Complete\n");
+        out.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
         out.push_str(&format!("Source:       {}\n", self.source));
         out.push_str(&format!("Output:       {}\n", self.output));
         out.push_str(&format!("Compression:  {}\n", self.compression));
@@ -131,7 +132,10 @@ impl BackupResult {
             "Output size:  {}\n",
             humansize::format_size(self.compressed_bytes, humansize::BINARY)
         ));
-        out.push_str(&format!("Ratio:        {:.1}%\n", self.compression_ratio * 100.0));
+        out.push_str(&format!(
+            "Ratio:        {:.1}%\n",
+            self.compression_ratio * 100.0
+        ));
         if let Some(ref hash) = self.sha256 {
             out.push_str(&format!("SHA-256:      {}\n", hash));
         }
@@ -141,7 +145,10 @@ impl BackupResult {
             humansize::format_size(self.read_speed as u64, humansize::BINARY)
         ));
         if self.zero_blocks_skipped > 0 {
-            out.push_str(&format!("Zero blocks:  {} skipped\n", self.zero_blocks_skipped));
+            out.push_str(&format!(
+                "Zero blocks:  {} skipped\n",
+                self.zero_blocks_skipped
+            ));
         }
         out
     }
@@ -153,10 +160,7 @@ impl BackupResult {
 }
 
 /// Perform a drive/file backup with optional compression.
-pub fn backup_drive<F>(
-    config: &BackupConfig,
-    mut progress_cb: F,
-) -> Result<BackupResult>
+pub fn backup_drive<F>(config: &BackupConfig, mut progress_cb: F) -> Result<BackupResult>
 where
     F: FnMut(u64, u64), // (bytes_read, total_bytes)
 {
@@ -167,7 +171,9 @@ where
     });
 
     if source_size == 0 {
-        return Err(anyhow!("source size is 0 or could not be determined — use --size to specify"));
+        return Err(anyhow!(
+            "source size is 0 or could not be determined — use --size to specify"
+        ));
     }
 
     let start = Instant::now();
@@ -289,10 +295,8 @@ where
             encoder.finish()?;
         }
         BackupCompression::Xz => {
-            let mut encoder = xz2::write::XzEncoder::new(
-                buf_writer,
-                config.compression_level.clamp(0, 9) as u32,
-            );
+            let mut encoder =
+                xz2::write::XzEncoder::new(buf_writer, config.compression_level.clamp(0, 9) as u32);
             loop {
                 let remaining = source_size.saturating_sub(bytes_read);
                 if remaining == 0 {
@@ -364,11 +368,22 @@ pub fn suggest_output_name(source: &str, compression: BackupCompression) -> Path
 
     let sanitized: String = base
         .chars()
-        .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' || c == '.' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '-' || c == '_' || c == '.' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect();
 
     let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
-    PathBuf::from(format!("{}_{}.{}", sanitized, timestamp, compression.extension()))
+    PathBuf::from(format!(
+        "{}_{}.{}",
+        sanitized,
+        timestamp,
+        compression.extension()
+    ))
 }
 
 #[cfg(test)]

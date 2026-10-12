@@ -31,7 +31,10 @@ async fn probe_mirrors(opts: &MirrorOpts) -> Result<()> {
         return Ok(());
     }
 
-    println!("Mirror probe results ({} mirrors):", mirror_list.mirrors.len());
+    println!(
+        "Mirror probe results ({} mirrors):",
+        mirror_list.mirrors.len()
+    );
     println!();
 
     for (i, m) in mirror_list.mirrors.iter().enumerate() {
@@ -47,7 +50,11 @@ async fn probe_mirrors(opts: &MirrorOpts) -> Result<()> {
             "  {}. {} ({}) — {}",
             i + 1,
             if m.name.is_empty() { &m.url } else { &m.name },
-            if m.location.is_empty() { "??" } else { &m.location },
+            if m.location.is_empty() {
+                "??"
+            } else {
+                &m.location
+            },
             status
         );
     }
@@ -61,23 +68,23 @@ async fn probe_mirrors(opts: &MirrorOpts) -> Result<()> {
 }
 
 async fn download_from_mirrors(opts: &MirrorOpts) -> Result<()> {
-    let path = opts.path.as_ref().ok_or_else(|| {
-        anyhow::anyhow!("--path is required for mirror download")
-    })?;
+    let path = opts
+        .path
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("--path is required for mirror download"))?;
 
     let mut mirror_list = get_mirror_list(opts).await?;
     let progress = Progress::new(0);
     let output_dir = std::path::PathBuf::from(&opts.output_dir);
 
-    info!("Downloading {} from {} mirrors", path, mirror_list.mirrors.len());
-
-    let result = mirror::download_with_failover(
-        &mut mirror_list,
+    info!(
+        "Downloading {} from {} mirrors",
         path,
-        &output_dir,
-        &progress,
-    )
-    .await?;
+        mirror_list.mirrors.len()
+    );
+
+    let result =
+        mirror::download_with_failover(&mut mirror_list, path, &output_dir, &progress).await?;
 
     if opts.json {
         println!(

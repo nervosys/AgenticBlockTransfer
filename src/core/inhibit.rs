@@ -46,7 +46,7 @@ impl SleepInhibitor {
     /// Create a new sleep inhibitor. The OS will not sleep while this object exists.
     pub fn new(reason: InhibitReason) -> Result<Self> {
         log::info!("Inhibiting sleep: {}", reason);
-        
+
         #[cfg(target_os = "linux")]
         {
             let fd = linux_inhibit_sleep(&reason);
@@ -59,9 +59,7 @@ impl SleepInhibitor {
         #[cfg(target_os = "macos")]
         {
             macos_inhibit_sleep(&reason);
-            Ok(Self {
-                _reason: reason,
-            })
+            Ok(Self { _reason: reason })
         }
 
         #[cfg(target_os = "windows")]
@@ -143,7 +141,10 @@ fn linux_inhibit_sleep(reason: &InhibitReason) -> Option<std::os::unix::io::RawF
             None // Child process handles inhibition
         }
         Err(e) => {
-            log::debug!("systemd-inhibit not available ({}), trying xdg-screensaver", e);
+            log::debug!(
+                "systemd-inhibit not available ({}), trying xdg-screensaver",
+                e
+            );
             // Fallback: disable screensaver
             let _ = std::process::Command::new("xdg-screensaver")
                 .args(["suspend", "0"])
@@ -173,14 +174,17 @@ fn macos_inhibit_sleep(reason: &InhibitReason) {
 #[cfg(target_os = "windows")]
 fn windows_inhibit_sleep() -> u32 {
     use windows::Win32::System::Power::{
-        SetThreadExecutionState, ES_CONTINUOUS, ES_SYSTEM_REQUIRED, ES_DISPLAY_REQUIRED,
+        SetThreadExecutionState, ES_CONTINUOUS, ES_DISPLAY_REQUIRED, ES_SYSTEM_REQUIRED,
     };
 
     let flags = ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED;
     // SAFETY: SetThreadExecutionState is a safe Windows API call with no memory implications.
     // It sets the thread's power management state. The previous state is returned.
     let prev = unsafe { SetThreadExecutionState(flags) };
-    log::debug!("Sleep inhibited via SetThreadExecutionState (prev={:?})", prev);
+    log::debug!(
+        "Sleep inhibited via SetThreadExecutionState (prev={:?})",
+        prev
+    );
     prev.0
 }
 
@@ -222,15 +226,24 @@ mod tests {
     #[test]
     fn test_inhibit_reason_display() {
         assert_eq!(format!("{}", InhibitReason::Writing), "Writing disk image");
-        assert_eq!(format!("{}", InhibitReason::Verifying), "Verifying written data");
-        assert_eq!(format!("{}", InhibitReason::Erasing), "Securely erasing device");
-        assert_eq!(format!("{}", InhibitReason::Cloning), "Cloning device");
-        assert_eq!(format!("{}", InhibitReason::Benchmarking), "Benchmarking I/O");
-        assert_eq!(format!("{}", InhibitReason::HealthCheck), "Checking drive health");
         assert_eq!(
-            format!("{}", InhibitReason::Custom("test".into())),
-            "test"
+            format!("{}", InhibitReason::Verifying),
+            "Verifying written data"
         );
+        assert_eq!(
+            format!("{}", InhibitReason::Erasing),
+            "Securely erasing device"
+        );
+        assert_eq!(format!("{}", InhibitReason::Cloning), "Cloning device");
+        assert_eq!(
+            format!("{}", InhibitReason::Benchmarking),
+            "Benchmarking I/O"
+        );
+        assert_eq!(
+            format!("{}", InhibitReason::HealthCheck),
+            "Checking drive health"
+        );
+        assert_eq!(format!("{}", InhibitReason::Custom("test".into())), "test");
     }
 
     #[test]

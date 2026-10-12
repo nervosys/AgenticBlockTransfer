@@ -2,9 +2,9 @@
 
 use anyhow::Result;
 
-use std::path::Path;
 use crate::cli::FsDetectOpts;
 use crate::core::fs_detect;
+use std::path::Path;
 
 pub async fn execute(opts: FsDetectOpts) -> Result<()> {
     match opts.action.as_str() {
@@ -41,10 +41,22 @@ pub async fn execute(opts: FsDetectOpts) -> Result<()> {
                 // Properties
                 let ft = &result.fs_type;
                 println!("Properties:");
-                println!("  Writable:       {}", if ft.is_writable() { "Yes" } else { "No" });
-                println!("  Windows native: {}", if ft.is_windows_native() { "Yes" } else { "No" });
-                println!("  Linux native:   {}", if ft.is_linux_native() { "Yes" } else { "No" });
-                println!("  macOS native:   {}", if ft.is_macos_native() { "Yes" } else { "No" });
+                println!(
+                    "  Writable:       {}",
+                    if ft.is_writable() { "Yes" } else { "No" }
+                );
+                println!(
+                    "  Windows native: {}",
+                    if ft.is_windows_native() { "Yes" } else { "No" }
+                );
+                println!(
+                    "  Linux native:   {}",
+                    if ft.is_linux_native() { "Yes" } else { "No" }
+                );
+                println!(
+                    "  macOS native:   {}",
+                    if ft.is_macos_native() { "Yes" } else { "No" }
+                );
                 if let Some(max) = ft.max_file_size() {
                     let human = humansize::format_size(max, humansize::BINARY);
                     println!("  Max file size:  {}", human);
@@ -68,10 +80,7 @@ pub async fn execute(opts: FsDetectOpts) -> Result<()> {
             }
         }
         other => {
-            anyhow::bail!(
-                "Unknown action: '{}'. Use 'detect' or 'probe'.",
-                other
-            );
+            anyhow::bail!("Unknown action: '{}'. Use 'detect' or 'probe'.", other);
         }
     }
 

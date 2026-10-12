@@ -1,6 +1,7 @@
 use anyhow::Result;
+use ironcrypto::hash::{Sha256, Sha512};
+use ironcrypto::prelude::Digest as IcDigest;
 use log::{info, warn};
-use sha2::{digest, Digest};
 use std::io::{BufReader, BufWriter, Read, Seek, Write};
 use std::time::Duration;
 
@@ -41,7 +42,7 @@ impl Writer {
             "PRECONDITION: block_size must be positive"
         );
         debug_assert!(
-            config.block_size % 512 == 0,
+            config.block_size.is_multiple_of(512),
             "PRECONDITION: block_size must be sector-aligned (multiple of 512)"
         );
         // SI-1: Target must not be empty
@@ -63,7 +64,7 @@ impl Writer {
     pub async fn execute(&self) -> Result<()> {
         // SI-3: Block size invariant must hold at execution time
         debug_assert!(
-            self.config.block_size > 0 && self.config.block_size % 512 == 0,
+            self.config.block_size > 0 && self.config.block_size.is_multiple_of(512),
             "INVARIANT: block_size must be positive and sector-aligned at execute time"
         );
         // SI-1: Target must be set
@@ -169,7 +170,7 @@ impl Writer {
             let target = self.config.target.clone();
             let bytes_written = write_result.bytes_written;
             let write_hash = write_result.write_hash.clone();
-            let hash_algo = self.config.hash_algorithm.unwrap_or(HashAlgorithm::Blake3);
+            let hash_algo = self.config.hash_algorithm.unwrap_or(HashAlgorithm::Sha256);
             let progress = self.progress.clone();
 
             tokio::task::spawn_blocking(move || {
@@ -204,6 +205,7 @@ impl Writer {
     /// written. This is equivalent to `dd conv=sparse` and can dramatically
     /// speed up images with large empty regions (e.g. freshly partitioned
     /// disk images where only the first and last few MB are non-zero).
+    #[allow(clippy::too_many_arguments)]
     fn write_blocks(
         mut reader: Box<dyn Read + Send>,
         target: &str,
@@ -232,7 +234,7 @@ impl Writer {
         // Inline hasher — compute hash of data as we write it so we never have
         // to re-read / re-decompress the source for verification.
         let mut inline_hasher: Option<Box<dyn InlineHasher>> =
-            hash_algorithm.map(|algo| create_inline_hasher(algo));
+            hash_algorithm.map(create_inline_hasher);
 
         loop {
             if progress.is_cancelled() {
@@ -296,7 +298,7 @@ impl Writer {
         );
         // SI-2: If we have a hash, it should be non-empty hex
         debug_assert!(
-            expected_hash.map_or(true, |h| !h.is_empty()),
+            expected_hash.is_none_or(|h| !h.is_empty()),
             "PRECONDITION: expected_hash, if provided, must be non-empty"
         );
 
@@ -419,10 +421,12 @@ pub(crate) fn open_device_for_writing(
     #[cfg(unix)]
     {
         use std::os::unix::fs::OpenOptionsExt;
-        let mut flags = libc::O_SYNC;
-        if direct_io {
-            flags |= libc::O_DIRECT;
-        }
+        // O_DIRECT is Linux-only; macOS has no equivalent open flag.
+        #[cfg(target_os = "linux")]
+        let direct = libc::O_DIRECT;
+        #[cfg(not(target_os = "linux"))]
+        let direct = 0;
+        let flags = libc::O_SYNC | if direct_io { direct } else { 0 };
         let file = std::fs::OpenOptions::new()
             .write(true)
             .custom_flags(flags)
@@ -501,26 +505,13 @@ trait InlineHasher: Send {
     fn finalize_hex(self: Box<Self>) -> String;
 }
 
-struct DigestInline<D: Digest + Send>(D);
-impl<D: Digest + Send> InlineHasher for DigestInline<D>
-where
-    digest::Output<D>: std::fmt::LowerHex,
-{
+struct IcDigestInline<D: IcDigest + Send>(D);
+impl<D: IcDigest + Send> InlineHasher for IcDigestInline<D> {
     fn update(&mut self, data: &[u8]) {
         self.0.update(data);
     }
     fn finalize_hex(self: Box<Self>) -> String {
-        format!("{:x}", self.0.finalize())
-    }
-}
-
-struct Blake3Inline(blake3::Hasher);
-impl InlineHasher for Blake3Inline {
-    fn update(&mut self, data: &[u8]) {
-        self.0.update(data);
-    }
-    fn finalize_hex(self: Box<Self>) -> String {
-        self.0.finalize().to_hex().to_string()
+        hex::encode(self.0.finalize())
     }
 }
 
@@ -536,11 +527,8 @@ impl InlineHasher for Crc32Inline {
 
 fn create_inline_hasher(algo: HashAlgorithm) -> Box<dyn InlineHasher> {
     match algo {
-        HashAlgorithm::Md5 => Box::new(DigestInline(md5::Md5::new())),
-        HashAlgorithm::Sha1 => Box::new(DigestInline(sha1::Sha1::new())),
-        HashAlgorithm::Sha256 => Box::new(DigestInline(sha2::Sha256::new())),
-        HashAlgorithm::Sha512 => Box::new(DigestInline(sha2::Sha512::new())),
-        HashAlgorithm::Blake3 => Box::new(Blake3Inline(blake3::Hasher::new())),
+        HashAlgorithm::Sha256 => Box::new(IcDigestInline(Sha256::new())),
+        HashAlgorithm::Sha512 => Box::new(IcDigestInline(Sha512::new())),
         HashAlgorithm::Crc32 => Box::new(Crc32Inline(crc32fast::Hasher::new())),
     }
 }

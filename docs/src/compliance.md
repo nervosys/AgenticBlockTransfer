@@ -44,9 +44,9 @@ abt write -i image.iso -o \\.\PhysicalDrive1
 
 | Feature                 | Default Mode                                      | FIPS Mode                              |
 | ----------------------- | ------------------------------------------------- | -------------------------------------- |
-| Hash algorithms         | All (MD5, SHA-1, SHA-256, SHA-512, BLAKE3, CRC32) | SHA-256, SHA-512 only                  |
+| Hash algorithms         | SHA-256, SHA-512, CRC32 | SHA-256, SHA-512 only                  |
 | Random erase data       | xorshift64 PRNG (fast, ~6 GiB/s)                  | OS CSPRNG via `getrandom` (SP 800-90A) |
-| Device fingerprint      | BLAKE3                                            | SHA-256 (FIPS 180-4)                   |
+| Device fingerprint      | SHA-256 (128-bit truncation)                      | SHA-256 (FIPS 180-4)                   |
 | TLS minimum version     | TLS 1.0+ (rustls default)                         | TLS 1.2+ (SP 800-52)                   |
 | HTTP downloads          | Permitted with warning                            | Rejected (HTTPS only)                  |
 | Non-approved algorithms | Warning emitted                                   | Error returned                         |
@@ -111,9 +111,10 @@ abt write -i image.iso -o \\.\PhysicalDrive1
 
 **Severity:** Non-compliant for FIPS 140-2/3 Level 1 certification
 
-The hash implementations (sha2, blake3 crates) and TLS stack (rustls) are
-pure-Rust implementations that have not undergone CMVP validation. They do not
-hold FIPS 140-2/3 certificates.
+The hash and MAC implementations (IronCrypto for SHA-2, HMAC, and RSA) and the
+TLS stack (rustls) are pure-Rust implementations that have not undergone CMVP
+validation.
+They do not hold FIPS 140-2/3 certificates.
 
 **Remediation path:**
 1. Switch `rustls` to use `aws-lc-rs` as its cryptographic backend
@@ -225,7 +226,7 @@ NIST SP 800-88 Rev 1 Table A-8:
 | --------- | -------------------------- | --------------------------------------------- |
 | SHA-256   | ✓ Approved (FIPS 180-4)    | Default. Recommended for all use.             |
 | SHA-512   | ✓ Approved (FIPS 180-4)    | Higher security margin.                       |
-| SHA-1     | ⚠ Deprecated (SP 800-131A) | Blocked in FIPS mode. Legacy only.            |
-| MD5       | ✗ Not Approved             | Cryptographically broken. Prohibited.         |
-| BLAKE3    | ✗ Not Approved             | Not NIST-standardized. Fast but not FIPS.     |
+| SHA-1     | Removed                    | Not available in any mode.                    |
+| MD5       | Removed                    | Not available in any mode.                    |
+| BLAKE3    | Removed                    | Not available in any mode.                    |
 | CRC32     | ✗ Not Applicable           | Error detection only. No security properties. |

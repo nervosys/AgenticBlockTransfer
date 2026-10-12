@@ -94,10 +94,18 @@ pub fn init() {
 
         // Detect system accessibility preferences
         if let Some(prefs) = detect_system_a11y() {
-            settings.screen_reader.store(prefs.screen_reader, Ordering::Relaxed);
-            settings.high_contrast.store(prefs.high_contrast, Ordering::Relaxed);
-            settings.reduced_motion.store(prefs.reduced_motion, Ordering::Relaxed);
-            settings.large_text.store(prefs.large_text, Ordering::Relaxed);
+            settings
+                .screen_reader
+                .store(prefs.screen_reader, Ordering::Relaxed);
+            settings
+                .high_contrast
+                .store(prefs.high_contrast, Ordering::Relaxed);
+            settings
+                .reduced_motion
+                .store(prefs.reduced_motion, Ordering::Relaxed);
+            settings
+                .large_text
+                .store(prefs.large_text, Ordering::Relaxed);
         }
 
         settings
@@ -121,18 +129,33 @@ struct SystemA11yPrefs {
 /// Detect system accessibility preferences.
 fn detect_system_a11y() -> Option<SystemA11yPrefs> {
     // Check environment variables (cross-platform)
-    let screen_reader = std::env::var("SCREEN_READER").ok().map(|v| v == "1").unwrap_or(false)
-        || std::env::var("ACCESSIBILITY").ok().map(|v| v == "1").unwrap_or(false);
+    let screen_reader = std::env::var("SCREEN_READER")
+        .ok()
+        .map(|v| v == "1")
+        .unwrap_or(false)
+        || std::env::var("ACCESSIBILITY")
+            .ok()
+            .map(|v| v == "1")
+            .unwrap_or(false);
 
-    let high_contrast =
-        std::env::var("HIGH_CONTRAST").ok().map(|v| v == "1").unwrap_or(false);
+    let high_contrast = std::env::var("HIGH_CONTRAST")
+        .ok()
+        .map(|v| v == "1")
+        .unwrap_or(false);
 
-    let reduced_motion =
-        std::env::var("REDUCED_MOTION").ok().map(|v| v == "1").unwrap_or(false)
-        || std::env::var("PREFERS_REDUCED_MOTION").ok().map(|v| v == "1").unwrap_or(false);
+    let reduced_motion = std::env::var("REDUCED_MOTION")
+        .ok()
+        .map(|v| v == "1")
+        .unwrap_or(false)
+        || std::env::var("PREFERS_REDUCED_MOTION")
+            .ok()
+            .map(|v| v == "1")
+            .unwrap_or(false);
 
-    let large_text =
-        std::env::var("LARGE_TEXT").ok().map(|v| v == "1").unwrap_or(false);
+    let large_text = std::env::var("LARGE_TEXT")
+        .ok()
+        .map(|v| v == "1")
+        .unwrap_or(false);
 
     Some(SystemA11yPrefs {
         screen_reader,
@@ -322,8 +345,7 @@ impl UiLabels {
     }
 
     pub fn device_item(name: &str, size: &str, pos: usize, total: usize) -> A11yLabel {
-        A11yLabel::new(Role::ListItem, format!("{} ({})", name, size))
-            .with_position(pos, total)
+        A11yLabel::new(Role::ListItem, format!("{} ({})", name, size)).with_position(pos, total)
     }
 
     pub fn write_button(enabled: bool) -> A11yLabel {
@@ -341,18 +363,15 @@ impl UiLabels {
     }
 
     pub fn progress_bar(percent: f32, phase: &str) -> A11yLabel {
-        A11yLabel::new(Role::ProgressBar, format!("{} progress", phase))
-            .with_value(percent)
+        A11yLabel::new(Role::ProgressBar, format!("{} progress", phase)).with_value(percent)
     }
 
     pub fn browse_button() -> A11yLabel {
-        A11yLabel::new(Role::Button, "Browse for image file")
-            .with_shortcut("Ctrl+O")
+        A11yLabel::new(Role::Button, "Browse for image file").with_shortcut("Ctrl+O")
     }
 
     pub fn refresh_button() -> A11yLabel {
-        A11yLabel::new(Role::Button, "Refresh device list")
-            .with_shortcut("F5")
+        A11yLabel::new(Role::Button, "Refresh device list").with_shortcut("F5")
     }
 
     pub fn verify_checkbox(checked: bool) -> A11yLabel {
@@ -361,13 +380,11 @@ impl UiLabels {
         } else {
             "Verify after writing: disabled"
         };
-        A11yLabel::new(Role::Checkbox, label)
-            .with_shortcut("V")
+        A11yLabel::new(Role::Checkbox, label).with_shortcut("V")
     }
 
     pub fn theme_menu() -> A11yLabel {
-        A11yLabel::new(Role::Menu, "Theme selection")
-            .with_description("Choose a color theme")
+        A11yLabel::new(Role::Menu, "Theme selection").with_description("Choose a color theme")
     }
 
     pub fn status_bar(message: &str) -> A11yLabel {
@@ -375,8 +392,9 @@ impl UiLabels {
     }
 
     pub fn confirmation_dialog(device: &str) -> A11yLabel {
-        A11yLabel::new(Role::Dialog, format!("Confirm write to {}", device))
-            .with_description("This will erase all data on the device. Press Enter to confirm or Escape to cancel.")
+        A11yLabel::new(Role::Dialog, format!("Confirm write to {}", device)).with_description(
+            "This will erase all data on the device. Press Enter to confirm or Escape to cancel.",
+        )
     }
 
     pub fn error_alert(message: &str) -> A11yLabel {
@@ -513,14 +531,20 @@ impl AnnouncementQueue {
 
     /// Drain all pending announcements, sorted by priority.
     pub fn drain(&mut self) -> Vec<Announcement> {
-        let mut items: Vec<_> = self.queue.drain(..).collect();
-        items.sort_by(|a, b| b.priority.cmp(&a.priority));
+        let mut items: Vec<_> = std::mem::take(&mut self.queue);
+        items.sort_by_key(|a| std::cmp::Reverse(a.priority));
         items
     }
 
     /// Whether there are pending announcements.
     pub fn is_empty(&self) -> bool {
         self.queue.is_empty()
+    }
+}
+
+impl Default for AnnouncementQueue {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -573,8 +597,7 @@ mod tests {
 
     #[test]
     fn test_progress_label() {
-        let label = A11yLabel::new(Role::ProgressBar, "Writing")
-            .with_value(42.5);
+        let label = A11yLabel::new(Role::ProgressBar, "Writing").with_value(42.5);
         let text = label.announce();
         assert!(text.contains("42%"));
         assert!(text.contains("progressbar"));
@@ -582,8 +605,7 @@ mod tests {
 
     #[test]
     fn test_list_item_position() {
-        let label = A11yLabel::new(Role::ListItem, "USB Drive")
-            .with_position(3, 10);
+        let label = A11yLabel::new(Role::ListItem, "USB Drive").with_position(3, 10);
         let text = label.announce();
         assert!(text.contains("3 of 10"));
     }
@@ -668,7 +690,13 @@ mod tests {
         init();
         let s = settings();
         // By default, should be false (unless env vars are set)
-        assert_eq!(s.screen_reader(), std::env::var("SCREEN_READER").ok().map(|v| v == "1").unwrap_or(false));
+        assert_eq!(
+            s.screen_reader(),
+            std::env::var("SCREEN_READER")
+                .ok()
+                .map(|v| v == "1")
+                .unwrap_or(false)
+        );
     }
 
     #[test]

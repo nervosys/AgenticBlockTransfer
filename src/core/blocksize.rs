@@ -229,10 +229,12 @@ fn open_for_bench(path: &str, direct_io: bool) -> Result<Box<dyn WriteSeek>> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::OpenOptionsExt;
-        let mut flags = libc::O_SYNC;
-        if direct_io {
-            flags |= libc::O_DIRECT;
-        }
+        // O_DIRECT is Linux-only; macOS has no equivalent open flag.
+        #[cfg(target_os = "linux")]
+        let direct = libc::O_DIRECT;
+        #[cfg(not(target_os = "linux"))]
+        let direct = 0;
+        let flags = libc::O_SYNC | if direct_io { direct } else { 0 };
         let file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
@@ -346,7 +348,7 @@ mod tests {
 
     #[test]
     fn min_leq_max() {
-        assert!(MIN_BLOCK_SIZE <= MAX_BLOCK_SIZE);
+        const _: () = assert!(MIN_BLOCK_SIZE <= MAX_BLOCK_SIZE);
     }
 
     #[test]

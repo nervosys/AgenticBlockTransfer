@@ -30,7 +30,7 @@ The name **AgenticBlockTransfer** is a direct nod: *Block Transfer* from IBM's B
 - **Multi-format** — ISO, IMG, RAW, DMG, VHD, VHDX, VMDK, QCOW2, WIM, FFU
 - **Auto-decompression** — gz, bz2, xz, zstd, zip (detected via magic bytes, not file extensions)
 - **Write verification** — byte-for-byte read-back with exact mismatch offset reporting
-- **Multi-algorithm hashing** — SHA-256, SHA-512, MD5, BLAKE3, CRC32
+- **Multi-algorithm hashing** — SHA-256, SHA-512, CRC32
 - **Native device enumeration** — sysfs/lsblk (Linux), `diskutil` (macOS), PowerShell `Get-Disk` (Windows)
 - **Device formatting** — ext2/3/4, FAT16/32, exFAT, NTFS, APFS, HFS+, btrfs, XFS, F2FS
 - **Safety guards** — system drive protection, removable-only defaults, interactive confirmation
@@ -399,7 +399,7 @@ abt verify -o /dev/sdb --expected-hash sha256:abc123...
 
 ```bash
 abt checksum image.iso
-abt checksum image.iso -a sha256 -a blake3 -a md5
+abt checksum image.iso -a sha256 -a sha512 -a crc32
 ```
 
 ### Format

@@ -38,7 +38,10 @@ pub fn send_notification(kind: NotifyKind, title: &str, body: &str) {
             info!("Desktop notification sent successfully");
         }
         Err(e) => {
-            warn!("Could not send desktop notification: {}. This is non-fatal.", e);
+            warn!(
+                "Could not send desktop notification: {}. This is non-fatal.",
+                e
+            );
         }
     }
 }
@@ -46,10 +49,7 @@ pub fn send_notification(kind: NotifyKind, title: &str, body: &str) {
 /// Convenience: notify that a write operation completed.
 pub fn notify_write_complete(target: &str, bytes_written: u64, elapsed_secs: f64) {
     let size = humansize::format_size(bytes_written, humansize::BINARY);
-    let body = format!(
-        "Wrote {} to {} in {:.1}s",
-        size, target, elapsed_secs
-    );
+    let body = format!("Wrote {} to {} in {:.1}s", size, target, elapsed_secs);
     send_notification(NotifyKind::Success, "Write Complete", &body);
 }
 
@@ -61,7 +61,10 @@ pub fn notify_write_failed(target: &str, error: &str) {
 
 /// Convenience: notify that verification succeeded.
 pub fn notify_verify_complete(target: &str) {
-    let body = format!("Verification of {} passed — data integrity confirmed", target);
+    let body = format!(
+        "Verification of {} passed — data integrity confirmed",
+        target
+    );
     send_notification(NotifyKind::Success, "Verification Passed", &body);
 }
 

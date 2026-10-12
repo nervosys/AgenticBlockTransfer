@@ -124,7 +124,10 @@ async fn save_meta(path: &Path, meta: &PartialDownloadMeta) -> Result<()> {
 }
 
 /// Check if the server supports Range requests by sending a HEAD request.
-async fn check_range_support(client: &reqwest::Client, url: &str) -> Result<(bool, u64, Option<String>, Option<String>)> {
+async fn check_range_support(
+    client: &reqwest::Client,
+    url: &str,
+) -> Result<(bool, u64, Option<String>, Option<String>)> {
     let resp = client.head(url).send().await?;
     if !resp.status().is_success() {
         anyhow::bail!("HEAD request failed: HTTP {}", resp.status().as_u16());
@@ -155,7 +158,11 @@ async fn check_range_support(client: &reqwest::Client, url: &str) -> Result<(boo
 }
 
 /// Check if the server file has changed since our partial download.
-fn server_file_changed(meta: &PartialDownloadMeta, etag: &Option<String>, last_modified: &Option<String>) -> bool {
+fn server_file_changed(
+    meta: &PartialDownloadMeta,
+    etag: &Option<String>,
+    last_modified: &Option<String>,
+) -> bool {
     if let (Some(meta_etag), Some(server_etag)) = (&meta.etag, etag) {
         if meta_etag != server_etag {
             warn!("Server ETag changed: {} -> {}", meta_etag, server_etag);
@@ -189,7 +196,10 @@ pub async fn download_with_resume(
     let client = build_client()?;
 
     // Determine filenames and paths
-    let filename = opts.filename.clone().unwrap_or_else(|| extract_filename(&opts.url));
+    let filename = opts
+        .filename
+        .clone()
+        .unwrap_or_else(|| extract_filename(&opts.url));
     let final_path = opts.output_dir.join(&filename);
     let part = part_path(&final_path);
     let meta = meta_path(&final_path);
@@ -248,7 +258,19 @@ pub async fn download_with_resume(
     let mut current_offset = resume_offset;
 
     loop {
-        match download_chunk(&client, &opts.url, &part, &meta, current_offset, total_size, &server_etag, &server_lm, progress).await {
+        match download_chunk(
+            &client,
+            &opts.url,
+            &part,
+            &meta,
+            current_offset,
+            total_size,
+            &server_etag,
+            &server_lm,
+            progress,
+        )
+        .await
+        {
             Ok(bytes_total) => {
                 // Download complete — rename .part to final
                 tokio::fs::rename(&part, &final_path)
@@ -256,7 +278,11 @@ pub async fn download_with_resume(
                     .context("Failed to rename .part file to final destination")?;
                 let _ = tokio::fs::remove_file(&meta).await;
 
-                info!("Download complete: {} ({} bytes)", final_path.display(), bytes_total);
+                info!(
+                    "Download complete: {} ({} bytes)",
+                    final_path.display(),
+                    bytes_total
+                );
 
                 return Ok(DownloadResult {
                     path: final_path,
@@ -272,11 +298,7 @@ pub async fn download_with_resume(
 
                 attempt += 1;
                 if attempt > opts.max_retries {
-                    anyhow::bail!(
-                        "Download failed after {} attempts: {}",
-                        opts.max_retries,
-                        e
-                    );
+                    anyhow::bail!("Download failed after {} attempts: {}", opts.max_retries, e);
                 }
 
                 // Update offset to current part file size for resume
@@ -297,6 +319,7 @@ pub async fn download_with_resume(
 }
 
 /// Download a chunk (or the full file) starting from `offset`.
+#[allow(clippy::too_many_arguments)]
 async fn download_chunk(
     client: &reqwest::Client,
     url: &str,
@@ -499,17 +522,9 @@ mod tests {
         };
 
         // Same ETag
-        assert!(!server_file_changed(
-            &meta,
-            &Some("\"v1\"".into()),
-            &None
-        ));
+        assert!(!server_file_changed(&meta, &Some("\"v1\"".into()), &None));
         // Different ETag
-        assert!(server_file_changed(
-            &meta,
-            &Some("\"v2\"".into()),
-            &None
-        ));
+        assert!(server_file_changed(&meta, &Some("\"v2\"".into()), &None));
         // No server ETag (can't tell if changed)
         assert!(!server_file_changed(&meta, &None, &None));
     }

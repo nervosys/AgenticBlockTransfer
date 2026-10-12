@@ -13,6 +13,8 @@ use anyhow::Result;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use std::fmt;
+#[cfg_attr(not(target_os = "linux"), allow(unused_imports))]
+use std::path::Path;
 
 /// USB speed classification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -39,13 +41,13 @@ impl UsbSpeed {
     /// Theoretical maximum throughput in megabytes/sec.
     pub fn max_throughput_mbps(&self) -> f64 {
         match self {
-            UsbSpeed::Usb1Low => 0.1875,    // 1.5 Mbps / 8
-            UsbSpeed::Usb1Full => 1.5,      // 12 Mbps / 8
-            UsbSpeed::Usb2High => 60.0,     // 480 Mbps / 8
-            UsbSpeed::Usb3Super => 625.0,   // 5 Gbps / 8
+            UsbSpeed::Usb1Low => 0.1875,       // 1.5 Mbps / 8
+            UsbSpeed::Usb1Full => 1.5,         // 12 Mbps / 8
+            UsbSpeed::Usb2High => 60.0,        // 480 Mbps / 8
+            UsbSpeed::Usb3Super => 625.0,      // 5 Gbps / 8
             UsbSpeed::Usb3SuperPlus => 1250.0, // 10 Gbps / 8
-            UsbSpeed::Usb32Gen2x2 => 2500.0,  // 20 Gbps / 8
-            UsbSpeed::Usb4 => 5000.0,       // 40 Gbps / 8
+            UsbSpeed::Usb32Gen2x2 => 2500.0,   // 20 Gbps / 8
+            UsbSpeed::Usb4 => 5000.0,          // 40 Gbps / 8
             UsbSpeed::Unknown => 0.0,
         }
     }
@@ -65,7 +67,10 @@ impl UsbSpeed {
 
     /// Whether this speed is considered "slow" for disk imaging.
     pub fn is_slow_for_imaging(&self) -> bool {
-        matches!(self, UsbSpeed::Usb1Low | UsbSpeed::Usb1Full | UsbSpeed::Usb2High)
+        matches!(
+            self,
+            UsbSpeed::Usb1Low | UsbSpeed::Usb1Full | UsbSpeed::Usb2High
+        )
     }
 
     /// Short descriptive name.
@@ -204,8 +209,7 @@ fn detect_usb_speed_linux(device_path: &str) -> Result<UsbDeviceInfo> {
     let sysfs_block = format!("/sys/block/{}", dev_name);
     let sysfs_device = if Path::new(&sysfs_block).exists() {
         // Follow the device symlink to find the USB ancestor
-        let device_link = std::fs::read_link(format!("{}/device", sysfs_block))
-            .unwrap_or_default();
+        let device_link = std::fs::read_link(format!("{}/device", sysfs_block)).unwrap_or_default();
         device_link.to_string_lossy().to_string()
     } else {
         String::new()
@@ -230,7 +234,8 @@ fn detect_usb_speed_linux(device_path: &str) -> Result<UsbDeviceInfo> {
                 let usb_path_str = path.to_string_lossy().to_string();
                 if !sysfs_device.is_empty() && !sysfs_device.contains(&usb_path_str) {
                     // Try checking if this USB device has our block device as a child
-                    let glob_pattern = format!("{}/host*/target*/*/block/{}", path.display(), dev_name);
+                    let glob_pattern =
+                        format!("{}/host*/target*/*/block/{}", path.display(), dev_name);
                     let has_block = std::fs::read_dir(&path)
                         .map(|_| Path::new(&glob_pattern).exists())
                         .unwrap_or(false);
@@ -340,11 +345,12 @@ pub fn check_and_warn_speed(device_path: &str) -> Option<String> {
             if let Some(warning) = info.speed_warning() {
                 warn!("{}", warning);
                 Some(warning)
-            } else if info.current_speed.is_slow_for_imaging() && info.current_speed != UsbSpeed::Unknown {
+            } else if info.current_speed.is_slow_for_imaging()
+                && info.current_speed != UsbSpeed::Unknown
+            {
                 let msg = format!(
                     "Device {} is connected at {} — writes may be slow for large images",
-                    device_path,
-                    info.current_speed
+                    device_path, info.current_speed
                 );
                 warn!("{}", msg);
                 Some(msg)
@@ -392,7 +398,9 @@ mod tests {
     #[test]
     fn test_usb_speed_throughput() {
         assert!(UsbSpeed::Usb2High.max_throughput_mbps() > 0.0);
-        assert!(UsbSpeed::Usb3Super.max_throughput_mbps() > UsbSpeed::Usb2High.max_throughput_mbps());
+        assert!(
+            UsbSpeed::Usb3Super.max_throughput_mbps() > UsbSpeed::Usb2High.max_throughput_mbps()
+        );
         assert_eq!(UsbSpeed::Unknown.max_throughput_mbps(), 0.0);
     }
 

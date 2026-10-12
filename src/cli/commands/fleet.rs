@@ -31,9 +31,7 @@ pub async fn execute(opts: FleetOpts) -> Result<()> {
                 .source
                 .as_ref()
                 .ok_or_else(|| anyhow::anyhow!("--source is required for validate"))?;
-            let image_size = std::fs::metadata(source)
-                .map(|m| m.len())
-                .unwrap_or(0);
+            let image_size = std::fs::metadata(source).map(|m| m.len()).unwrap_or(0);
 
             let targets: Vec<fleet::FleetTarget> = opts
                 .targets
@@ -66,7 +64,9 @@ pub async fn execute(opts: FleetOpts) -> Result<()> {
         "status" => {
             // In a real implementation, this would connect to a running fleet session
             println!("No fleet write session is currently active.");
-            println!("Start one with: abt fleet write --source <image> --target <dev1> --target <dev2>");
+            println!(
+                "Start one with: abt fleet write --source <image> --target <dev1> --target <dev2>"
+            );
         }
         other => {
             anyhow::bail!(

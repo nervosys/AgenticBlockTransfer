@@ -28,7 +28,8 @@ impl LoopbackDevice {
         // Pre-allocate by writing zeros (or seeking + writing a byte at end)
         file.as_file_mut().set_len(size)?;
         // Write a zero byte at the end to ensure the file is allocated
-        file.as_file_mut().seek(SeekFrom::Start(size.saturating_sub(1)))?;
+        file.as_file_mut()
+            .seek(SeekFrom::Start(size.saturating_sub(1)))?;
         file.as_file_mut().write_all(&[0])?;
         file.as_file_mut().seek(SeekFrom::Start(0))?;
 
@@ -99,9 +100,7 @@ impl LoopbackDevice {
 /// Create a test image file with a repeating byte pattern.
 /// Returns a NamedTempFile with the given size and `.img` extension.
 pub fn create_test_image(size: u64) -> Result<NamedTempFile> {
-    let file = tempfile::Builder::new()
-        .suffix(".img")
-        .tempfile()?;
+    let file = tempfile::Builder::new().suffix(".img").tempfile()?;
 
     let mut writer = std::io::BufWriter::new(file.as_file().try_clone()?);
     let pattern: Vec<u8> = (0..=255u8).collect();
@@ -133,20 +132,22 @@ pub fn create_compressed_test_image(size: u64, format: &str) -> Result<NamedTemp
         _ => anyhow::bail!("Unsupported compression format: {}", format),
     };
 
-    let compressed = tempfile::Builder::new()
-        .suffix(suffix)
-        .tempfile()?;
+    let compressed = tempfile::Builder::new().suffix(suffix).tempfile()?;
 
     match format {
         "gz" | "gzip" => {
-            let mut encoder =
-                flate2::write::GzEncoder::new(compressed.as_file().try_clone()?, flate2::Compression::fast());
+            let mut encoder = flate2::write::GzEncoder::new(
+                compressed.as_file().try_clone()?,
+                flate2::Compression::fast(),
+            );
             encoder.write_all(&raw_data)?;
             encoder.finish()?;
         }
         "bz2" | "bzip2" => {
-            let mut encoder =
-                bzip2::write::BzEncoder::new(compressed.as_file().try_clone()?, bzip2::Compression::fast());
+            let mut encoder = bzip2::write::BzEncoder::new(
+                compressed.as_file().try_clone()?,
+                bzip2::Compression::fast(),
+            );
             encoder.write_all(&raw_data)?;
             encoder.finish()?;
         }
@@ -156,7 +157,8 @@ pub fn create_compressed_test_image(size: u64, format: &str) -> Result<NamedTemp
             encoder.finish()?;
         }
         "zstd" | "zst" => {
-            let mut encoder = zstd::stream::write::Encoder::new(compressed.as_file().try_clone()?, 1)?;
+            let mut encoder =
+                zstd::stream::write::Encoder::new(compressed.as_file().try_clone()?, 1)?;
             encoder.write_all(&raw_data)?;
             encoder.finish()?;
         }
@@ -218,8 +220,8 @@ mod tests {
             .read_to_end(&mut data)
             .unwrap();
         // First 256 bytes should be 0..=255
-        for i in 0..256 {
-            assert_eq!(data[i], i as u8);
+        for (i, &b) in data.iter().enumerate().take(256) {
+            assert_eq!(b, i as u8);
         }
         // Next 256 should repeat
         for i in 0..256 {

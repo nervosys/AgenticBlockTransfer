@@ -3,7 +3,6 @@
 // like system drive protection, minimum/recommended size, source drive exclusion,
 // and locked/read-only detection. Inspired by Etcher's drive-constraints module.
 
-use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::path::Path;
@@ -254,7 +253,8 @@ pub fn validate_drive(device: &DeviceInfo, config: &ConstraintConfig) -> Validat
             passed: !is_sys,
             severity: ConstraintSeverity::Error,
             message: if is_sys {
-                "Drive appears to be a system drive — writing here could destroy your OS".to_string()
+                "Drive appears to be a system drive — writing here could destroy your OS"
+                    .to_string()
             } else {
                 "Not a system drive".to_string()
             },
@@ -356,7 +356,11 @@ pub fn validate_drive(device: &DeviceInfo, config: &ConstraintConfig) -> Validat
 
     // 6. Large drive warning
     if config.minimum_size > 0 && config.large_drive_warning_ratio > 0.0 {
-        let too_large = is_drive_size_large(device, config.minimum_size, config.large_drive_warning_ratio);
+        let too_large = is_drive_size_large(
+            device,
+            config.minimum_size,
+            config.large_drive_warning_ratio,
+        );
         if too_large {
             constraints.push(ConstraintResult {
                 name: "large-drive".to_string(),
@@ -426,14 +430,9 @@ pub fn validate_drive(device: &DeviceInfo, config: &ConstraintConfig) -> Validat
 }
 
 /// Validate multiple drives and rank them by suitability.
-pub fn validate_drives(
-    devices: &[DeviceInfo],
-    config: &ConstraintConfig,
-) -> Vec<ValidationReport> {
-    let mut reports: Vec<ValidationReport> = devices
-        .iter()
-        .map(|d| validate_drive(d, config))
-        .collect();
+pub fn validate_drives(devices: &[DeviceInfo], config: &ConstraintConfig) -> Vec<ValidationReport> {
+    let mut reports: Vec<ValidationReport> =
+        devices.iter().map(|d| validate_drive(d, config)).collect();
 
     // Sort: compatible first, then by size (smallest suitable first)
     reports.sort_by(|a, b| {
@@ -534,10 +533,7 @@ mod tests {
     fn test_is_source_drive() {
         let mut dev = test_device("/dev/sdb", 8_000_000_000);
         dev.mount_points = vec!["/media/user/usb".to_string()];
-        assert!(is_source_drive(
-            &dev,
-            "/media/user/usb/ubuntu.iso"
-        ));
+        assert!(is_source_drive(&dev, "/media/user/usb/ubuntu.iso"));
         assert!(!is_source_drive(&dev, "/home/user/ubuntu.iso"));
     }
 

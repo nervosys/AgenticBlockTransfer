@@ -44,7 +44,7 @@
 //!   Fingerprint tokens are deterministic: the same device produces the same
 //!   token. Different devices produce different tokens (collision-resistant).
 //!   Verified by:
-//!   - BLAKE3 128-bit truncation collision resistance
+//!   - SHA-256 128-bit truncation collision resistance
 //!   - Property test: deterministic token generation
 //!
 //! **SI-7: Retry Bounded Termination**
@@ -116,11 +116,11 @@ const _: () = {
         "SI-3: MIN_BLOCK_SIZE must not exceed MAX_BLOCK_SIZE"
     );
     assert!(
-        MIN_BLOCK_SIZE % 512 == 0,
+        MIN_BLOCK_SIZE.is_multiple_of(512),
         "SI-3: MIN_BLOCK_SIZE must be a multiple of sector size (512)"
     );
     assert!(
-        MAX_BLOCK_SIZE % 512 == 0,
+        MAX_BLOCK_SIZE.is_multiple_of(512),
         "SI-3: MAX_BLOCK_SIZE must be a multiple of sector size (512)"
     );
     assert!(
@@ -192,7 +192,7 @@ const _: () = {
 const _: () = {
     use super::blocksize::{CANDIDATES, MAX_BLOCK_SIZE, MIN_BLOCK_SIZE};
 
-    assert!(CANDIDATES.len() > 0, "SI-3: CANDIDATES must not be empty");
+    assert!(!CANDIDATES.is_empty(), "SI-3: CANDIDATES must not be empty");
 
     // All candidates within bounds
     let mut i = 0;
@@ -281,10 +281,6 @@ macro_rules! invariant {
         debug_assert!($cond, "INVARIANT VIOLATED: {}", format_args!($($arg)*));
     };
 }
-
-pub(crate) use ensure_post;
-pub(crate) use invariant;
-pub(crate) use require;
 
 // ════════════════════════════════════════════════════════════════════════════════
 // Kani Proof Harnesses — Bounded Model Checking
@@ -833,11 +829,8 @@ mod tests {
         let progress = progress::Progress::new(data.len() as u64);
 
         for algo in [
-            types::HashAlgorithm::Md5,
-            types::HashAlgorithm::Sha1,
             types::HashAlgorithm::Sha256,
             types::HashAlgorithm::Sha512,
-            types::HashAlgorithm::Blake3,
             types::HashAlgorithm::Crc32,
         ] {
             let hash1 =

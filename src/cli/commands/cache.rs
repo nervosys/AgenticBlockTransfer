@@ -20,17 +20,19 @@ pub async fn execute(opts: CacheOpts) -> Result<()> {
             if opts.json {
                 println!("{}", serde_json::to_string_pretty(&entries)?);
             } else {
-                println!("{:<60} {:>10} {}", "URL", "Size", "Cached At");
+                println!("{:<60} {:>10} Cached At", "URL", "Size");
                 println!("{}", "-".repeat(90));
                 for entry in &entries {
                     let size = humansize::format_size(entry.size, humansize::BINARY);
-                    let date = chrono::DateTime::from_timestamp(entry.cached_at as i64, 0).map(|d| d.format("%Y-%m-%d %H:%M:%S").to_string()).unwrap_or_else(|| entry.cached_at.to_string());
+                    let date = chrono::DateTime::from_timestamp(entry.cached_at as i64, 0)
+                        .map(|d| d.format("%Y-%m-%d %H:%M:%S").to_string())
+                        .unwrap_or_else(|| entry.cached_at.to_string());
                     let url_display = if entry.url.len() > 58 {
                         format!("{}...", &entry.url[..57])
                     } else {
                         entry.url.clone()
                     };
-                    println!("{:<60} {:>10} {}", url_display, size, &date);
+                    println!("{:<60} {:>10} {}", url_display, size, date);
                 }
                 println!("\n{} entries", entries.len());
             }

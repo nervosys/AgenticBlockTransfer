@@ -24,7 +24,6 @@ impl DeviceEnumerator for MacDeviceEnumerator {
         }
 
         // Parse diskutil output for whole disks
-        let stdout = String::from_utf8_lossy(&output.stdout);
         let mut devices = Vec::new();
 
         // Simpler approach: use diskutil info for each disk

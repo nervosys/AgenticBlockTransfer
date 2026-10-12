@@ -8,6 +8,8 @@
 //! Falls back gracefully to standard I/O on non-Linux or older kernels.
 
 use std::io::{self, Read, Write};
+#[cfg(target_os = "linux")]
+use std::io::{Seek, SeekFrom};
 use std::path::Path;
 
 use anyhow::{Context, Result};
@@ -206,12 +208,13 @@ fn write_uring_linux(
 
         let write_slice = if config.direct_io && filled < block_size {
             // O_DIRECT requires sector-aligned writes; pad to sector boundary
-            let aligned_size = ((filled + 511) / 512) * 512;
+            let aligned_size = filled.div_ceil(512) * 512;
             // Zero-pad
-            for byte in buf[filled..aligned_size.min(buf.len())].iter_mut() {
+            let end = aligned_size.min(buf.len());
+            for byte in buf[filled..end].iter_mut() {
                 *byte = 0;
             }
-            &buf[..aligned_size.min(buf.len())]
+            &buf[..end]
         } else {
             &buf[..filled]
         };
@@ -315,7 +318,7 @@ mod tests {
     #[test]
     fn test_write_fallback_basic() {
         let data: Vec<u8> = (0..8192).map(|i| (i % 256) as u8).collect();
-        let reader: Box<dyn Read + Send> = Box::new(std::io::Cursor::new(data.clone()));
+        let _reader: Box<dyn Read + Send> = Box::new(std::io::Cursor::new(data.clone()));
         let tmp = NamedTempFile::new().unwrap();
 
         let config = UringConfig {

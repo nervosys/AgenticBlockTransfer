@@ -368,7 +368,7 @@ impl CatalogRegistry {
         for entry in std::fs::read_dir(cache_dir)? {
             let entry = entry?;
             let path = entry.path();
-            if path.extension().map_or(false, |ext| ext == "json") {
+            if path.extension().is_some_and(|ext| ext == "json") {
                 match std::fs::read_to_string(&path) {
                     Ok(content) => match serde_json::from_str::<ProviderCatalog>(&content) {
                         Ok(catalog) => {
@@ -407,7 +407,11 @@ pub async fn fetch_catalog(
 
     let resp = client.get(url).send().await?;
     if !resp.status().is_success() {
-        anyhow::bail!("HTTP {} fetching catalog from {}", resp.status().as_u16(), url);
+        anyhow::bail!(
+            "HTTP {} fetching catalog from {}",
+            resp.status().as_u16(),
+            url
+        );
     }
 
     let body = resp.text().await?;
@@ -420,11 +424,7 @@ pub async fn fetch_catalog(
 
     // Try rpi-imager format (has "os_list" at top level)
     if let Ok(rpi) = serde_json::from_str::<RpiImagerCatalog>(&body) {
-        let entries = rpi
-            .os_list
-            .into_iter()
-            .map(|e| convert_rpi_entry(e))
-            .collect();
+        let entries = rpi.os_list.into_iter().map(convert_rpi_entry).collect();
         return Ok(ProviderCatalog {
             provider,
             display_name: display_name.to_string(),
@@ -484,11 +484,7 @@ fn convert_rpi_entry(rpi: RpiImagerEntry) -> CatalogEntry {
         .map(|d| HardwareTag::Device(d.clone()))
         .collect();
 
-    let children: Vec<CatalogEntry> = rpi
-        .subitems
-        .into_iter()
-        .map(|e| convert_rpi_entry(e))
-        .collect();
+    let children: Vec<CatalogEntry> = rpi.subitems.into_iter().map(convert_rpi_entry).collect();
 
     CatalogEntry {
         id: slug(&rpi.name),
@@ -521,13 +517,11 @@ fn slug(name: &str) -> String {
 
 /// Well-known provider catalog URLs.
 pub fn default_catalog_urls() -> Vec<(ProviderId, &'static str, &'static str)> {
-    vec![
-        (
-            ProviderId::RaspberryPi,
-            "Raspberry Pi",
-            "https://downloads.raspberrypi.com/os_list_imagingutility_v4.json",
-        ),
-    ]
+    vec![(
+        ProviderId::RaspberryPi,
+        "Raspberry Pi",
+        "https://downloads.raspberrypi.com/os_list_imagingutility_v4.json",
+    )]
 }
 
 #[cfg(test)]
@@ -549,15 +543,27 @@ mod tests {
         assert_eq!(ProviderId::parse("rpi"), ProviderId::RaspberryPi);
         assert_eq!(ProviderId::parse("ubuntu"), ProviderId::Ubuntu);
         assert_eq!(ProviderId::parse("windows"), ProviderId::Microsoft);
-        assert_eq!(ProviderId::parse("custom:arch"), ProviderId::Custom("arch".into()));
-        assert_eq!(ProviderId::parse("nixos"), ProviderId::Custom("nixos".into()));
+        assert_eq!(
+            ProviderId::parse("custom:arch"),
+            ProviderId::Custom("arch".into())
+        );
+        assert_eq!(
+            ProviderId::parse("nixos"),
+            ProviderId::Custom("nixos".into())
+        );
     }
 
     #[test]
     fn test_hardware_tag_display() {
         assert_eq!(HardwareTag::Arch("amd64".into()).to_string(), "arch:amd64");
-        assert_eq!(HardwareTag::Device("rpi4".into()).to_string(), "device:rpi4");
-        assert_eq!(HardwareTag::BootMode("uefi".into()).to_string(), "boot:uefi");
+        assert_eq!(
+            HardwareTag::Device("rpi4".into()).to_string(),
+            "device:rpi4"
+        );
+        assert_eq!(
+            HardwareTag::BootMode("uefi".into()).to_string(),
+            "boot:uefi"
+        );
     }
 
     #[test]

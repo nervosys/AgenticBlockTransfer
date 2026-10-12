@@ -18,7 +18,10 @@ pub async fn execute(opts: WatchdogOpts) -> Result<()> {
             if opts.json {
                 println!("{}", serde_json::to_string_pretty(&config)?);
             } else {
-                println!("Watchdog Configuration ({})", opts.preset.as_deref().unwrap_or("default"));
+                println!(
+                    "Watchdog Configuration ({})",
+                    opts.preset.as_deref().unwrap_or("default")
+                );
                 println!("  Check interval:    {:?}", config.check_interval);
                 println!("  Stall timeout:     {:?}", config.stall_timeout);
                 println!("  Max stalls:        {}", config.max_stalls);

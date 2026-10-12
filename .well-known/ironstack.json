@@ -236,7 +236,7 @@
     },
     {
       "name": "checksum",
-      "description": "Compute cryptographic checksums/hashes (MD5, SHA-256, SHA-512, BLAKE3, CRC32) of files or block devices. File must exist and be readable",
+      "description": "Compute cryptographic checksums/hashes (SHA-256, SHA-512, CRC32) of files or block devices. File must exist and be readable",
       "requires_grant": false,
       "budgeted": true,
       "surfaces": [
@@ -248,7 +248,7 @@
     },
     {
       "name": "checksum-file",
-      "description": "Parse and verify checksum files such as SHA256SUMS and MD5SUMS.",
+      "description": "Parse and verify checksum files such as SHA256SUMS and SHA512SUMS.",
       "requires_grant": false,
       "budgeted": false,
       "surfaces": [

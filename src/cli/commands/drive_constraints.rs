@@ -30,9 +30,7 @@ pub async fn execute(opts: DriveConstraintsOpts) -> Result<()> {
                 name: device_path.to_string(),
                 vendor: String::new(),
                 serial: None,
-                size: std::fs::metadata(device_path)
-                    .map(|m| m.len())
-                    .unwrap_or(0),
+                size: std::fs::metadata(device_path).map(|m| m.len()).unwrap_or(0),
                 sector_size: 512,
                 physical_sector_size: 512,
                 removable: true,
@@ -66,7 +64,10 @@ pub async fn execute(opts: DriveConstraintsOpts) -> Result<()> {
                 if failures.is_empty() {
                     println!("  Result: PASS -- drive is compatible");
                 } else {
-                    println!("  Result: FAIL -- {} constraint(s) violated", failures.len());
+                    println!(
+                        "  Result: FAIL -- {} constraint(s) violated",
+                        failures.len()
+                    );
                 }
             }
         }
@@ -126,10 +127,7 @@ pub async fn execute(opts: DriveConstraintsOpts) -> Result<()> {
                 println!("Drive Compatibility Report ({} drives):", reports.len());
                 println!();
                 for report in &reports {
-                    println!(
-                        "  {} -- {}",
-                        report.device_path, report.status
-                    );
+                    println!("  {} -- {}", report.device_path, report.status);
                     for r in report.failures() {
                         println!("    X {}: {}", r.name, r.message);
                     }

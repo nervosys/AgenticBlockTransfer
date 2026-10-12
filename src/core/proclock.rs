@@ -15,9 +15,12 @@
 
 #![allow(dead_code)]
 
-use anyhow::{Context, Result};
+#[cfg_attr(not(target_os = "linux"), allow(unused_imports))]
+use anyhow::Context;
+use anyhow::Result;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+#[cfg_attr(not(target_os = "linux"), allow(unused_imports))]
+use std::path::Path;
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -132,7 +135,10 @@ impl std::fmt::Display for LockScanResult {
             }
         }
         if self.has_critical {
-            writeln!(f, "  ⚠ Critical processes detected — manual intervention required")?;
+            writeln!(
+                f,
+                "  ⚠ Critical processes detected — manual intervention required"
+            )?;
         }
         for w in &self.warnings {
             writeln!(f, "  Warning: {}", w)?;
@@ -223,10 +229,18 @@ pub fn scan_locks(target: &str, config: &LockScanConfig) -> Result<LockScanResul
     // Post-process: classify safe/critical
     for lock in &mut result.locks {
         let name_lower = lock.name.to_lowercase();
-        if config.critical_processes.iter().any(|c| c.to_lowercase() == name_lower) {
+        if config
+            .critical_processes
+            .iter()
+            .any(|c| c.to_lowercase() == name_lower)
+        {
             lock.safe_to_kill = false;
             result.has_critical = true;
-        } else if config.safe_processes.iter().any(|s| s.to_lowercase() == name_lower) {
+        } else if config
+            .safe_processes
+            .iter()
+            .any(|s| s.to_lowercase() == name_lower)
+        {
             lock.safe_to_kill = true;
         }
     }
@@ -242,7 +256,7 @@ pub fn scan_locks(target: &str, config: &LockScanConfig) -> Result<LockScanResul
 fn scan_linux(target: &str, config: &LockScanConfig, result: &mut LockScanResult) -> Result<()> {
     use std::fs;
 
-    let target_path = Path::new(target);
+    let _target_path = Path::new(target);
 
     // Resolve mount points for the target device
     let mount_points = if config.resolve_mounts {
@@ -285,14 +299,14 @@ fn scan_linux(target: &str, config: &LockScanConfig, result: &mut LockScanResult
         }
 
         // Read process name
-        let comm_path = proc_dir.join(&pid_str.to_string()).join("comm");
+        let comm_path = proc_dir.join(pid_str.to_string()).join("comm");
         let proc_name = fs::read_to_string(&comm_path)
             .unwrap_or_default()
             .trim()
             .to_string();
 
         // Check /proc/<pid>/fd/ symlinks
-        let fd_dir = proc_dir.join(&pid_str.to_string()).join("fd");
+        let fd_dir = proc_dir.join(pid_str.to_string()).join("fd");
         if let Ok(fd_entries) = fs::read_dir(&fd_dir) {
             for fd_entry in fd_entries.flatten() {
                 if let Ok(link_target) = fs::read_link(fd_entry.path()) {
@@ -303,7 +317,7 @@ fn scan_linux(target: &str, config: &LockScanConfig, result: &mut LockScanResult
                                 pid,
                                 name: proc_name.clone(),
                                 command: fs::read_to_string(
-                                    proc_dir.join(&pid_str.to_string()).join("cmdline")
+                                    proc_dir.join(pid_str.to_string()).join("cmdline"),
                                 )
                                 .ok()
                                 .map(|s| s.replace('\0', " ").trim().to_string()),
@@ -322,7 +336,7 @@ fn scan_linux(target: &str, config: &LockScanConfig, result: &mut LockScanResult
         }
 
         // Check /proc/<pid>/cwd
-        let cwd_path = proc_dir.join(&pid_str.to_string()).join("cwd");
+        let cwd_path = proc_dir.join(pid_str.to_string()).join("cwd");
         if let Ok(cwd_target) = fs::read_link(&cwd_path) {
             let cwd_str = cwd_target.to_string_lossy().to_string();
             for mp in &mount_points {
@@ -380,10 +394,9 @@ fn scan_macos(target: &str, config: &LockScanConfig, result: &mut LockScanResult
         if output.status.code() == Some(1) {
             return Ok(());
         }
-        result.warnings.push(format!(
-            "lsof exited with code {:?}",
-            output.status.code()
-        ));
+        result
+            .warnings
+            .push(format!("lsof exited with code {:?}", output.status.code()));
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -394,7 +407,7 @@ fn scan_macos(target: &str, config: &LockScanConfig, result: &mut LockScanResult
 // ─── Windows Implementation ────────────────────────────────────────────────
 
 #[cfg(target_os = "windows")]
-fn scan_windows(target: &str, config: &LockScanConfig, result: &mut LockScanResult) -> Result<()> {
+fn scan_windows(target: &str, _config: &LockScanConfig, result: &mut LockScanResult) -> Result<()> {
     // On Windows, we use a simpler approach: check if we can open the device
     // exclusively. If not, something else has it. We also enumerate volumes
     // on the physical disk and check their mount status.
@@ -403,7 +416,14 @@ fn scan_windows(target: &str, config: &LockScanConfig, result: &mut LockScanResu
     // Try handle.exe / openfiles approach
     // Check mount points for volumes on this physical disk
     let output = Command::new("cmd")
-        .args(&["/c", "wmic", "logicaldisk", "get", "deviceid,description,volumename", "/format:csv"])
+        .args([
+            "/c",
+            "wmic",
+            "logicaldisk",
+            "get",
+            "deviceid,description,volumename",
+            "/format:csv",
+        ])
         .output();
 
     match output {
@@ -427,16 +447,16 @@ fn scan_windows(target: &str, config: &LockScanConfig, result: &mut LockScanResu
             }
         }
         Err(e) => {
-            result.warnings.push(format!("Could not query volumes: {}", e));
+            result
+                .warnings
+                .push(format!("Could not query volumes: {}", e));
         }
     }
 
     // Try to detect explorer.exe and other processes using Process list
     let output2 = Command::new("powershell")
-        .args(&["-NoProfile", "-Command",
-            &format!(
-                "Get-Process | Where-Object {{ $_.Path -ne $null }} | Select-Object Id,ProcessName | Format-Table -AutoSize"
-            )
+        .args(["-NoProfile", "-Command",
+            "Get-Process | Where-Object { $_.Path -ne $null } | Select-Object Id,ProcessName | Format-Table -AutoSize"
         ])
         .output();
 
@@ -447,7 +467,9 @@ fn scan_windows(target: &str, config: &LockScanConfig, result: &mut LockScanResu
             }
         }
         Err(e) => {
-            result.warnings.push(format!("Failed to enumerate processes: {}", e));
+            result
+                .warnings
+                .push(format!("Failed to enumerate processes: {}", e));
         }
     }
 
@@ -617,7 +639,8 @@ mod tests {
 
     #[test]
     fn test_lsof_output_parsing() {
-        let output = "p1234\ncexplorer\nf4\nn/media/usb/file.txt\np5678\ncbash\nf255\nn/media/usb\n";
+        let output =
+            "p1234\ncexplorer\nf4\nn/media/usb/file.txt\np5678\ncbash\nf255\nn/media/usb\n";
         let config = LockScanConfig::default();
         let mut result = LockScanResult {
             target: "/dev/sdb".into(),

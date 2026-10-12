@@ -17,7 +17,7 @@
 
 #![allow(dead_code)]
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use std::env;
 use std::path::PathBuf;
 
@@ -280,7 +280,10 @@ pub fn elevate() -> Result<ElevationResult> {
         _ => Ok(ElevationResult {
             success: false,
             method,
-            error: Some(format!("Elevation method {} not supported on this platform", method)),
+            error: Some(format!(
+                "Elevation method {} not supported on this platform",
+                method
+            )),
             should_exit: false,
         }),
     }
@@ -327,7 +330,7 @@ fn elevate_uac() -> Result<ElevationResult> {
 
     // Use PowerShell Start-Process -Verb RunAs for UAC elevation
     let status = Command::new("powershell")
-        .args(&[
+        .args([
             "-NoProfile",
             "-Command",
             &format!(
@@ -345,7 +348,10 @@ fn elevate_uac() -> Result<ElevationResult> {
         error: if status.success() {
             None
         } else {
-            Some(format!("UAC elevation failed with exit code {:?}", status.code()))
+            Some(format!(
+                "UAC elevation failed with exit code {:?}",
+                status.code()
+            ))
         },
         should_exit: status.success(),
     })
@@ -434,7 +440,10 @@ fn elevate_osascript() -> Result<ElevationResult> {
         error: if status.success() {
             None
         } else {
-            Some(format!("osascript failed with exit code {:?}", status.code()))
+            Some(format!(
+                "osascript failed with exit code {:?}",
+                status.code()
+            ))
         },
         should_exit: status.success(),
     })

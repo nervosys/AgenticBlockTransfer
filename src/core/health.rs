@@ -158,7 +158,7 @@ impl HealthReport {
     pub fn format_text(&self) -> String {
         let mut out = String::new();
         out.push_str(&format!("Drive Health Report: {}\n", self.device));
-        out.push_str(&format!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"));
+        out.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
         out.push_str(&format!(
             "Size tested:    {} ({} bytes)\n",
             humansize::format_size(self.total_size, humansize::BINARY),
@@ -179,13 +179,13 @@ impl HealthReport {
             "Read speed:     {}/s\n",
             humansize::format_size(self.avg_read_speed as u64, humansize::BINARY)
         ));
-        out.push_str(&format!("\n"));
+        out.push('\n');
         out.push_str(&format!("Write errors:       {}\n", self.write_errors));
         out.push_str(&format!("Read errors:        {}\n", self.read_errors));
         out.push_str(&format!("Corruption errors:  {}\n", self.corruption_errors));
         out.push_str(&format!("Bad blocks:         {}\n", self.bad_blocks.len()));
         if self.fake_drive_detected {
-            out.push_str(&format!("\n⚠ COUNTERFEIT DRIVE DETECTED!\n"));
+            out.push_str("\n⚠ COUNTERFEIT DRIVE DETECTED!\n");
             if let Some(actual) = self.actual_usable_size {
                 out.push_str(&format!(
                     "  Reported size: {}, actual usable: {}\n",
@@ -247,11 +247,9 @@ where
     let total_passes = patterns.len();
     let block_size = config.block_size;
 
-    let (test_start, test_size) = config
-        .test_region
-        .unwrap_or((0, size));
+    let (test_start, test_size) = config.test_region.unwrap_or((0, size));
 
-    let total_blocks = (test_size + block_size as u64 - 1) / block_size as u64;
+    let total_blocks = test_size.div_ceil(block_size as u64);
 
     let mut bad_blocks = Vec::new();
     let mut write_errors: u64 = 0;
@@ -456,9 +454,13 @@ fn detect_fake_capacity(bad_blocks: &[BadBlock], total_size: u64) -> bool {
         return false;
     }
 
-    // Find the lowest offset with corruption  
-    let min_offset = corruption_blocks.iter().map(|b| b.offset).min().unwrap_or(total_size);
-    
+    // Find the lowest offset with corruption
+    let min_offset = corruption_blocks
+        .iter()
+        .map(|b| b.offset)
+        .min()
+        .unwrap_or(total_size);
+
     // If corruption starts before 90% of total and all blocks beyond that point are bad,
     // it's likely a fake drive
     let threshold = total_size * 9 / 10;
@@ -501,7 +503,9 @@ pub fn quick_read_check(path: &str, size: u64, block_size: usize) -> Result<(u64
             Err(_) => {
                 errors += 1;
                 // Try to seek past the bad region
-                let pos = file.seek(SeekFrom::Current(block_size as i64)).unwrap_or(size);
+                let pos = file
+                    .seek(SeekFrom::Current(block_size as i64))
+                    .unwrap_or(size);
                 if pos >= size {
                     break;
                 }
@@ -574,7 +578,10 @@ mod tests {
     fn test_bad_block_error_display() {
         assert_eq!(format!("{}", BadBlockError::WriteError), "write error");
         assert_eq!(format!("{}", BadBlockError::ReadError), "read error");
-        assert_eq!(format!("{}", BadBlockError::CorruptionError), "data corruption");
+        assert_eq!(
+            format!("{}", BadBlockError::CorruptionError),
+            "data corruption"
+        );
     }
 
     #[test]
@@ -607,13 +614,8 @@ mod tests {
             test_region: None,
         };
 
-        let report = check_bad_blocks(
-            tmp.path().to_str().unwrap(),
-            size,
-            &config,
-            |_, _, _, _| {},
-        )
-        .unwrap();
+        let report =
+            check_bad_blocks(tmp.path().to_str().unwrap(), size, &config, |_, _, _, _| {}).unwrap();
 
         assert_eq!(report.verdict, HealthVerdict::Healthy);
         assert!(report.bad_blocks.is_empty());

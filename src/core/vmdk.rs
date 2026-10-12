@@ -63,7 +63,7 @@ impl VmdkSparseHeader {
         }
 
         let version = reader.read_u32::<LittleEndian>()?;
-        if version < 1 || version > 3 {
+        if !(1..=3).contains(&version) {
             bail!("Unsupported VMDK version: {}", version);
         }
 
@@ -125,8 +125,8 @@ impl VmdkSparseHeader {
 
     /// Number of grain directory entries.
     pub fn gd_entry_count(&self) -> u64 {
-        let grains = (self.capacity_sectors + self.grain_size_sectors - 1) / self.grain_size_sectors;
-        (grains + self.num_gte_per_gt as u64 - 1) / self.num_gte_per_gt as u64
+        let grains = self.capacity_sectors.div_ceil(self.grain_size_sectors);
+        grains.div_ceil(self.num_gte_per_gt as u64)
     }
 
     /// Whether deflate compression is used on grains.
@@ -304,7 +304,7 @@ impl<R: Read + Seek> Read for VmdkReader<R> {
 
         let n = self
             .read_grain_data(self.pos, &mut buf[..to_read])
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            .map_err(io::Error::other)?;
 
         self.pos += n as u64;
         Ok(n)
@@ -363,7 +363,7 @@ mod tests {
         // unclean_shutdown
         buf.write_u8(0).unwrap();
         // 4-byte EOL markers
-        buf.extend_from_slice(&[b'\n', b' ', b'\r', b'\n']);
+        buf.extend_from_slice(b"\n \r\n");
         // compress_algorithm
         buf.write_u16::<LittleEndian>(0).unwrap();
         // 6 bytes padding

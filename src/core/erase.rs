@@ -398,12 +398,12 @@ fn discard_erase(
 
         progress.add_bytes(device_size);
 
-        return Ok(EraseResult {
+        Ok(EraseResult {
             method_used: EraseMethod::Discard,
             bytes_erased: device_size,
             passes_completed: 1,
             verified: false,
-        });
+        })
     }
 
     #[cfg(not(target_os = "linux"))]
@@ -462,12 +462,12 @@ fn ata_secure_erase(
 
         progress.add_bytes(device_size);
 
-        return Ok(EraseResult {
+        Ok(EraseResult {
             method_used: EraseMethod::AtaSecureErase,
             bytes_erased: device_size,
             passes_completed: 1,
             verified: false,
-        });
+        })
     }
 
     #[cfg(not(target_os = "linux"))]
@@ -534,12 +534,12 @@ fn nvme_sanitize(
 
         progress.add_bytes(device_size);
 
-        return Ok(EraseResult {
+        Ok(EraseResult {
             method_used: EraseMethod::NvmeSanitize,
             bytes_erased: device_size,
             passes_completed: 1,
             verified: false,
-        });
+        })
     }
 
     #[cfg(not(target_os = "linux"))]

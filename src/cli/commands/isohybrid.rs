@@ -74,7 +74,9 @@ pub async fn execute(opts: IsoHybridOpts) -> Result<()> {
                     println!("This ISO can be written directly as a raw disk image (dd mode).");
                 } else {
                     println!();
-                    println!("This ISO should be written by extracting files to a bootable partition.");
+                    println!(
+                        "This ISO should be written by extracting files to a bootable partition."
+                    );
                 }
             }
         }

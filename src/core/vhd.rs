@@ -97,7 +97,7 @@ impl VhdFooter {
         if &cookie != VHD_MAGIC {
             bail!(
                 "Not a VHD image: cookie {:?}, expected {:?}",
-                &cookie,
+                cookie,
                 VHD_MAGIC
             );
         }
@@ -120,8 +120,7 @@ impl VhdFooter {
         let sectors_per_track = r.read_u8()?;
 
         let disk_type_raw = r.read_u32::<BigEndian>()?;
-        let disk_type = VhdDiskType::from_u32(disk_type_raw)
-            .unwrap_or(VhdDiskType::None);
+        let disk_type = VhdDiskType::from_u32(disk_type_raw).unwrap_or(VhdDiskType::None);
 
         let checksum = r.read_u32::<BigEndian>()?;
 
@@ -184,7 +183,7 @@ impl VhdDynamicHeader {
         let mut cookie = [0u8; 8];
         reader.read_exact(&mut cookie)?;
         if &cookie != VHD_DYNAMIC_MAGIC {
-            bail!("Invalid VHD dynamic header: cookie {:?}", &cookie);
+            bail!("Invalid VHD dynamic header: cookie {:?}", cookie);
         }
 
         let data_offset = reader.read_u64::<BigEndian>()?;
@@ -267,8 +266,8 @@ impl<R: Read + Seek> VhdDynamicReader<R> {
         let sectors_per_block = dynamic_header.block_size / 512;
         // Bitmap: one bit per sector, rounded up to next 512-byte boundary
         let bitmap_bits = sectors_per_block;
-        let bitmap_bytes = (bitmap_bits + 7) / 8;
-        let bitmap_size = ((bitmap_bytes + 511) / 512) * 512;
+        let bitmap_bytes = bitmap_bits.div_ceil(8);
+        let bitmap_size = bitmap_bytes.div_ceil(512) * 512;
 
         Ok(VhdDynamicReader {
             inner,
@@ -320,7 +319,7 @@ impl<R: Read + Seek> Read for VhdDynamicReader<R> {
         }
         let n = self
             .read_at_offset(self.pos, buf)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            .map_err(io::Error::other)?;
         self.pos += n as u64;
         Ok(n)
     }
@@ -387,14 +386,16 @@ pub fn parse_vhdx<R: Read + Seek>(reader: &mut R) -> Result<VhdxInfo> {
     let mut sig = [0u8; 8];
     reader.read_exact(&mut sig)?;
     if &sig != VHDX_FILE_MAGIC {
-        bail!("Not a VHDX image: signature {:?}", &sig);
+        bail!("Not a VHDX image: signature {:?}", sig);
     }
 
     // Creator (UTF-16LE, up to 256 chars = 512 bytes at offset 8)
     let mut creator_bytes = [0u8; 512];
     reader.read_exact(&mut creator_bytes)?;
     let creator: String = creator_bytes
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|c| u16::from_le_bytes([c[0], c[1]]))
         .take_while(|&c| c != 0)
         .map(|c| char::from(c as u8))
@@ -544,7 +545,7 @@ mod tests {
         c.write_u32::<BigEndian>(0x5769326B).unwrap(); // creator_host_os (Wi2k = Windows)
         c.write_u64::<BigEndian>(virtual_size).unwrap(); // original_size
         c.write_u64::<BigEndian>(virtual_size).unwrap(); // current_size
-        // geometry: 10 cylinders, 16 heads, 63 sectors
+                                                         // geometry: 10 cylinders, 16 heads, 63 sectors
         c.write_u16::<BigEndian>(10).unwrap();
         c.write_u8(16).unwrap();
         c.write_u8(63).unwrap();

@@ -8,13 +8,13 @@ use crate::core::verifier;
 
 pub async fn execute(opts: VerifyOpts) -> Result<()> {
     let algorithm = match opts.hash_algorithm.to_lowercase().as_str() {
-        "md5" => HashAlgorithm::Md5,
-        "sha1" => HashAlgorithm::Sha1,
         "sha256" => HashAlgorithm::Sha256,
         "sha512" => HashAlgorithm::Sha512,
-        "blake3" => HashAlgorithm::Blake3,
         "crc32" => HashAlgorithm::Crc32,
-        _ => HashAlgorithm::Sha256,
+        other => anyhow::bail!(
+            "Unknown or unsupported hash algorithm: {} (supported: sha256, sha512, crc32)",
+            other
+        ),
     };
 
     let progress = Progress::new(0);
@@ -39,8 +39,7 @@ pub async fn execute(opts: VerifyOpts) -> Result<()> {
             opts.target,
             source_path.display()
         );
-        let matches =
-            verifier::verify_by_hash(&source_path, &opts.target, algorithm, &progress)?;
+        let matches = verifier::verify_by_hash(&source_path, &opts.target, algorithm, &progress)?;
 
         if matches {
             println!("PASS: Target matches source");

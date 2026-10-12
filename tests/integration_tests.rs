@@ -65,20 +65,13 @@ mod integration {
         let progress = Progress::new(0);
 
         for algo in [
-            HashAlgorithm::Md5,
-            HashAlgorithm::Sha1,
             HashAlgorithm::Sha256,
             HashAlgorithm::Sha512,
-            HashAlgorithm::Blake3,
             HashAlgorithm::Crc32,
         ] {
             let src_hash = hash_file(source.path(), algo, &progress).unwrap();
             let tgt_hash = hash_file(target.path(), algo, &progress).unwrap();
-            assert_eq!(
-                src_hash, tgt_hash,
-                "{} hash mismatch after copy",
-                algo
-            );
+            assert_eq!(src_hash, tgt_hash, "{} hash mismatch after copy", algo);
         }
     }
 
@@ -110,9 +103,13 @@ mod integration {
         // Decompress via open_image and hash
         let mut reader = abt::core::image::open_image(compressed.path()).unwrap();
         let progress2 = Progress::new(0);
-        let decompressed_hash = hash_reader(&mut reader, HashAlgorithm::Sha256, &progress2).unwrap();
+        let decompressed_hash =
+            hash_reader(&mut reader, HashAlgorithm::Sha256, &progress2).unwrap();
 
-        assert_eq!(original_hash, decompressed_hash, "gzip decompress hash mismatch");
+        assert_eq!(
+            original_hash, decompressed_hash,
+            "gzip decompress hash mismatch"
+        );
     }
 
     #[test]
@@ -138,9 +135,13 @@ mod integration {
 
         let mut reader = abt::core::image::open_image(compressed.path()).unwrap();
         let progress2 = Progress::new(0);
-        let decompressed_hash = hash_reader(&mut reader, HashAlgorithm::Sha256, &progress2).unwrap();
+        let decompressed_hash =
+            hash_reader(&mut reader, HashAlgorithm::Sha256, &progress2).unwrap();
 
-        assert_eq!(original_hash, decompressed_hash, "xz decompress hash mismatch");
+        assert_eq!(
+            original_hash, decompressed_hash,
+            "xz decompress hash mismatch"
+        );
     }
 
     #[test]
@@ -165,9 +166,13 @@ mod integration {
 
         let mut reader = abt::core::image::open_image(compressed.path()).unwrap();
         let progress2 = Progress::new(0);
-        let decompressed_hash = hash_reader(&mut reader, HashAlgorithm::Sha256, &progress2).unwrap();
+        let decompressed_hash =
+            hash_reader(&mut reader, HashAlgorithm::Sha256, &progress2).unwrap();
 
-        assert_eq!(original_hash, decompressed_hash, "bzip2 decompress hash mismatch");
+        assert_eq!(
+            original_hash, decompressed_hash,
+            "bzip2 decompress hash mismatch"
+        );
     }
 
     #[test]
@@ -192,9 +197,13 @@ mod integration {
 
         let mut reader = abt::core::image::open_image(compressed.path()).unwrap();
         let progress2 = Progress::new(0);
-        let decompressed_hash = hash_reader(&mut reader, HashAlgorithm::Sha256, &progress2).unwrap();
+        let decompressed_hash =
+            hash_reader(&mut reader, HashAlgorithm::Sha256, &progress2).unwrap();
 
-        assert_eq!(original_hash, decompressed_hash, "zstd decompress hash mismatch");
+        assert_eq!(
+            original_hash, decompressed_hash,
+            "zstd decompress hash mismatch"
+        );
     }
 
     // ── Image info with compressed formats ─────────────────────────────────
@@ -295,7 +304,7 @@ mod integration {
 block_size = "8M"
 verify = false
 sparse = true
-hash_algorithm = "blake3"
+hash_algorithm = "sha512"
 
 [safety]
 level = "high"
@@ -312,7 +321,7 @@ verbose = 4
         assert_eq!(cfg.write.block_size, "8M");
         assert!(!cfg.write.verify);
         assert!(cfg.write.sparse);
-        assert_eq!(cfg.write.hash_algorithm, "blake3");
+        assert_eq!(cfg.write.hash_algorithm, "sha512");
         assert_eq!(cfg.safety.level, "high");
         assert!(!cfg.safety.backup_partition_table);
         assert_eq!(cfg.output.verbose, 4);
@@ -369,7 +378,8 @@ verbose = 4
         use abt::core::verifier::verify_against_hash;
 
         let mut f = NamedTempFile::new().unwrap();
-        f.write_all(b"hello world extra data that should be ignored").unwrap();
+        f.write_all(b"hello world extra data that should be ignored")
+            .unwrap();
         f.flush().unwrap();
 
         let progress = Progress::new(0);
@@ -401,7 +411,7 @@ verbose = 4
         let result = verify_by_hash(
             source.path(),
             &target.path().to_string_lossy(),
-            HashAlgorithm::Blake3,
+            HashAlgorithm::Sha256,
             &progress,
         )
         .unwrap();

@@ -157,7 +157,13 @@ pub fn analyze_directory(path: &Path) -> Result<LayoutAnalysis> {
     let mut total_size = 0u64;
     let mut file_count = 0usize;
 
-    scan_directory(path, &mut largest_size, &mut largest_name, &mut total_size, &mut file_count)?;
+    scan_directory(
+        path,
+        &mut largest_size,
+        &mut largest_name,
+        &mut total_size,
+        &mut file_count,
+    )?;
 
     let has_large_files = largest_size > FAT32_MAX_FILE_SIZE;
     let needs_uefi_ntfs = has_large_files; // Simplified: UEFI:NTFS needed when files exceed FAT32 limit
@@ -206,7 +212,13 @@ fn scan_directory(
                 *largest_name = entry.file_name().to_string_lossy().to_string();
             }
         } else if metadata.is_dir() {
-            scan_directory(&entry.path(), largest_size, largest_name, total_size, file_count)?;
+            scan_directory(
+                &entry.path(),
+                largest_size,
+                largest_name,
+                total_size,
+                file_count,
+            )?;
         }
     }
 
@@ -220,8 +232,10 @@ pub fn calculate_uefi_ntfs_layout(
     windows_to_go: bool,
 ) -> Result<DiskLayout> {
     if disk_size < DEFAULT_ESP_SIZE + PARTITION_ALIGNMENT * 2 {
-        anyhow::bail!("Disk too small for UEFI:NTFS layout (need at least {} bytes)", 
-            DEFAULT_ESP_SIZE + PARTITION_ALIGNMENT * 2);
+        anyhow::bail!(
+            "Disk too small for UEFI:NTFS layout (need at least {} bytes)",
+            DEFAULT_ESP_SIZE + PARTITION_ALIGNMENT * 2
+        );
     }
 
     let scheme = match boot_mode {
@@ -249,15 +263,16 @@ pub fn calculate_uefi_ntfs_layout(
     let data_offset = align_up(esp_offset + esp_size, PARTITION_ALIGNMENT);
     let data_size = disk_size - data_offset - PARTITION_ALIGNMENT; // leave room at end
 
-    let data_type_guid = if windows_to_go {
-        "EBD0A0A2-B9E5-4433-87C0-68B6B72699C7".into() // Microsoft Basic Data
-    } else {
-        "EBD0A0A2-B9E5-4433-87C0-68B6B72699C7".into() // Microsoft Basic Data
-    };
+    // Microsoft Basic Data.
+    let data_type_guid = "EBD0A0A2-B9E5-4433-87C0-68B6B72699C7".into();
 
     partitions.push(PartitionInfo {
         index: 1,
-        label: if windows_to_go { "WindowsToGo".into() } else { "WINDOWS".into() },
+        label: if windows_to_go {
+            "WindowsToGo".into()
+        } else {
+            "WINDOWS".into()
+        },
         offset: data_offset,
         size: data_size,
         filesystem: "NTFS".into(),
@@ -286,10 +301,7 @@ pub fn calculate_uefi_ntfs_layout(
 }
 
 /// Calculate a simple single-partition FAT32 layout.
-pub fn calculate_simple_layout(
-    disk_size: u64,
-    boot_mode: BootMode,
-) -> Result<DiskLayout> {
+pub fn calculate_simple_layout(disk_size: u64, boot_mode: BootMode) -> Result<DiskLayout> {
     let scheme = match boot_mode {
         BootMode::Uefi | BootMode::Dual => PartitionScheme::Gpt,
         BootMode::Bios => PartitionScheme::Mbr,
@@ -381,7 +393,11 @@ impl EspContents {
 
     /// Get all required directory paths.
     pub fn required_directories(&self) -> Vec<String> {
-        let mut dirs = vec!["EFI".to_string(), "EFI/BOOT".to_string(), "EFI/abt".to_string()];
+        let mut dirs = vec![
+            "EFI".to_string(),
+            "EFI/BOOT".to_string(),
+            "EFI/abt".to_string(),
+        ];
         // Add directories from extra files
         for (path, _) in &self.extra_files {
             if let Some(parent) = Path::new(path).parent() {
@@ -397,7 +413,7 @@ impl EspContents {
 
 /// Align a value up to the given alignment boundary.
 fn align_up(value: u64, alignment: u64) -> u64 {
-    (value + alignment - 1) / alignment * alignment
+    value.div_ceil(alignment) * alignment
 }
 
 /// Format a byte count for display.
@@ -574,7 +590,12 @@ mod tests {
         let disk_size = 16u64 * 1024 * 1024 * 1024;
         let layout = calculate_uefi_ntfs_layout(disk_size, BootMode::Uefi, false).unwrap();
         for p in &layout.partitions {
-            assert_eq!(p.offset % PARTITION_ALIGNMENT, 0, "Partition {} not aligned", p.label);
+            assert_eq!(
+                p.offset % PARTITION_ALIGNMENT,
+                0,
+                "Partition {} not aligned",
+                p.label
+            );
         }
     }
 

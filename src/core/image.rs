@@ -2,8 +2,8 @@ use anyhow::Result;
 use std::io::{BufReader, Read};
 use std::path::Path;
 
-use super::types::ImageFormat;
 use super::qcow2;
+use super::types::ImageFormat;
 use super::vhd;
 use super::vmdk;
 

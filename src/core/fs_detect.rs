@@ -112,9 +112,9 @@ impl FsType {
     /// Maximum file size supported (approximate, None if variable or unlimited).
     pub fn max_file_size(&self) -> Option<u64> {
         match self {
-            Self::Fat12 => Some(32 * 1024 * 1024),            // 32 MiB practical
-            Self::Fat16 => Some(2 * 1024 * 1024 * 1024),      // 2 GiB
-            Self::Fat32 => Some(4 * 1024 * 1024 * 1024 - 1),  // 4 GiB - 1
+            Self::Fat12 => Some(32 * 1024 * 1024), // 32 MiB practical
+            Self::Fat16 => Some(2 * 1024 * 1024 * 1024), // 2 GiB
+            Self::Fat32 => Some(4 * 1024 * 1024 * 1024 - 1), // 4 GiB - 1
             Self::ExFat => Some(16 * 1024 * 1024 * 1024 * 1024), // 16 EiB theoretical
             _ => None,
         }
@@ -321,7 +321,13 @@ fn extract_ascii_string(buf: &[u8], offset: usize, len: usize) -> Option<String>
     let slice = &buf[offset..offset + len];
     let s: String = slice
         .iter()
-        .map(|&b| if b >= 0x20 && b < 0x7F { b as char } else { ' ' })
+        .map(|&b| {
+            if (0x20..0x7F).contains(&b) {
+                b as char
+            } else {
+                ' '
+            }
+        })
         .collect();
     let trimmed = s.trim().to_string();
     if trimmed.is_empty() {
@@ -338,12 +344,22 @@ fn read_le_u16(buf: &[u8], offset: usize) -> u16 {
 
 /// Read a little-endian u32 from buffer.
 fn read_le_u32(buf: &[u8], offset: usize) -> u32 {
-    u32::from_le_bytes([buf[offset], buf[offset + 1], buf[offset + 2], buf[offset + 3]])
+    u32::from_le_bytes([
+        buf[offset],
+        buf[offset + 1],
+        buf[offset + 2],
+        buf[offset + 3],
+    ])
 }
 
 /// Read a big-endian u32 from buffer.
 fn read_be_u32(buf: &[u8], offset: usize) -> u32 {
-    u32::from_be_bytes([buf[offset], buf[offset + 1], buf[offset + 2], buf[offset + 3]])
+    u32::from_be_bytes([
+        buf[offset],
+        buf[offset + 1],
+        buf[offset + 2],
+        buf[offset + 3],
+    ])
 }
 
 // --- Individual filesystem detectors ---
@@ -385,12 +401,10 @@ fn try_detect_ntfs(buf: &[u8], len: usize) -> Option<FsDetectResult> {
         let sectors_per_cluster = buf[0x0D] as u32;
         let cluster_size = bytes_per_sector * sectors_per_cluster;
         let total_sectors = u64::from_le_bytes([
-            buf[0x28], buf[0x29], buf[0x2A], buf[0x2B], buf[0x2C], buf[0x2D], buf[0x2E],
-            buf[0x2F],
+            buf[0x28], buf[0x29], buf[0x2A], buf[0x2B], buf[0x2C], buf[0x2D], buf[0x2E], buf[0x2F],
         ]);
         let serial = u64::from_le_bytes([
-            buf[0x48], buf[0x49], buf[0x4A], buf[0x4B], buf[0x4C], buf[0x4D], buf[0x4E],
-            buf[0x4F],
+            buf[0x48], buf[0x49], buf[0x4A], buf[0x4B], buf[0x4C], buf[0x4D], buf[0x4E], buf[0x4F],
         ]);
         Some(FsDetectResult {
             fs_type: FsType::Ntfs,
@@ -447,8 +461,7 @@ fn try_detect_fat(buf: &[u8], len: usize) -> Option<FsDetectResult> {
     let bytes_per_sector = read_le_u16(buf, 0x0B);
     if bytes_per_sector == 0
         || !bytes_per_sector.is_power_of_two()
-        || bytes_per_sector < 512
-        || bytes_per_sector > 4096
+        || !(512..=4096).contains(&bytes_per_sector)
     {
         return None;
     }
@@ -482,8 +495,7 @@ fn try_detect_fat(buf: &[u8], len: usize) -> Option<FsDetectResult> {
         fat_size_32 as u64
     };
 
-    let root_dir_sectors =
-        ((root_entry_count as u64 * 32) + (bytes_per_sector as u64 - 1)) / bytes_per_sector as u64;
+    let root_dir_sectors = (root_entry_count as u64 * 32).div_ceil(bytes_per_sector as u64);
     let data_sectors = total_sectors
         .saturating_sub(reserved_sectors as u64)
         .saturating_sub(num_fats as u64 * fat_size)
@@ -695,7 +707,12 @@ fn try_detect_iso9660(buf: &[u8], _len: usize) -> Option<FsDetectResult> {
             volume_id: None,
             block_size: Some(if block_size > 0 { block_size } else { 2048 }),
             total_size: Some(
-                volume_space as u64 * if block_size > 0 { block_size as u64 } else { 2048 },
+                volume_space as u64
+                    * if block_size > 0 {
+                        block_size as u64
+                    } else {
+                        2048
+                    },
             ),
             confidence: 0.95,
             magic_hex: hex::encode(&buf[ISO9660_MAGIC_OFFSET..ISO9660_MAGIC_OFFSET + 5]),
@@ -802,7 +819,10 @@ mod tests {
 
     #[test]
     fn test_fs_type_max_file_size() {
-        assert_eq!(FsType::Fat32.max_file_size(), Some(4 * 1024 * 1024 * 1024 - 1));
+        assert_eq!(
+            FsType::Fat32.max_file_size(),
+            Some(4 * 1024 * 1024 * 1024 - 1)
+        );
         assert!(FsType::Ntfs.max_file_size().is_none());
     }
 
@@ -812,7 +832,7 @@ mod tests {
         buf[FAT_OEM_OFFSET..FAT_OEM_OFFSET + 8].copy_from_slice(EXFAT_MAGIC);
         buf[108] = 9; // sector_size_shift = 512
         buf[109] = 3; // cluster_shift = 8 sectors
-        // total_sectors = 1000000
+                      // total_sectors = 1000000
         let sectors: u64 = 1_000_000;
         buf[72..80].copy_from_slice(&sectors.to_le_bytes());
         // serial
@@ -991,7 +1011,7 @@ mod tests {
         let total: u64 = 10_737_418_240; // 10 GB
         buf[sb + 0x70..sb + 0x78].copy_from_slice(&total.to_le_bytes());
         buf[sb + 0x44..sb + 0x48].copy_from_slice(&4096u32.to_le_bytes()); // sector_size
-        // Write magic AFTER node_size area to avoid overwrite at 0x10040
+                                                                           // Write magic AFTER node_size area to avoid overwrite at 0x10040
         buf[BTRFS_MAGIC_OFFSET..BTRFS_MAGIC_OFFSET + 8].copy_from_slice(BTRFS_MAGIC);
         for i in 0..16 {
             buf[sb + 0x20 + i] = (i * 7) as u8;
@@ -1018,10 +1038,7 @@ mod tests {
         let mut cursor = Cursor::new(&buf);
         let result = detect_filesystem(&mut cursor).unwrap();
         assert_eq!(result.fs_type, FsType::Iso9660);
-        assert_eq!(
-            result.volume_label,
-            Some("Ubuntu 24.04 LTS".to_string())
-        );
+        assert_eq!(result.volume_label, Some("Ubuntu 24.04 LTS".to_string()));
     }
 
     #[test]

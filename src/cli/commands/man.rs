@@ -14,8 +14,12 @@ use crate::cli::{Args, ManOpts};
 
 pub fn execute(opts: ManOpts) -> Result<()> {
     let output_dir = Path::new(&opts.output_dir);
-    fs::create_dir_all(output_dir)
-        .with_context(|| format!("Failed to create output directory: {}", output_dir.display()))?;
+    fs::create_dir_all(output_dir).with_context(|| {
+        format!(
+            "Failed to create output directory: {}",
+            output_dir.display()
+        )
+    })?;
 
     let cmd = Args::command();
 

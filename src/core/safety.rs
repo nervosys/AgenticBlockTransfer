@@ -19,9 +19,11 @@ use super::types::ImageSource;
 /// explicit confirmation before proceeding.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum SafetyLevel {
     /// Minimal checks — equivalent to dd with a seatbelt.
     /// Still blocks system drive writes unless --force.
+    #[default]
     Low,
     /// Recommended for agent use. All Low checks plus:
     /// - Requires removable media or explicit device confirmation token
@@ -35,12 +37,6 @@ pub enum SafetyLevel {
     /// - Refuses to write to any non-removable device
     /// - Logs full operation plan to file before executing
     High,
-}
-
-impl Default for SafetyLevel {
-    fn default() -> Self {
-        Self::Low
-    }
 }
 
 impl std::fmt::Display for SafetyLevel {
@@ -100,36 +96,17 @@ pub struct DeviceFingerprint {
 impl DeviceFingerprint {
     /// Create a fingerprint from a DeviceInfo.
     ///
-    /// # FIPS Compliance
-    /// In FIPS mode, uses SHA-256 (FIPS 180-4 approved) instead of BLAKE3.
-    /// BLAKE3 is not NIST-approved and must not be used for integrity-relevant
-    /// operations in federal / DoD environments.
-    ///
-    /// In default mode, BLAKE3 is used for performance (faster than SHA-256).
+    /// The token is a SHA-256 digest truncated to 128 bits (SP 800-107 Rev 1), the same
+    /// in every mode, so fingerprints do not depend on the compliance setting.
     pub fn from_device(dev: &DeviceInfo) -> Self {
-        let token = if super::compliance::is_fips_mode() {
-            // SP 800-131A / FIPS 180-4: Use SHA-256
-            super::compliance::fips_device_token(
-                &dev.path,
-                &dev.name,
-                dev.serial.as_deref(),
-                dev.size,
-                dev.removable,
-                dev.is_system,
-            )
-        } else {
-            // Default: BLAKE3 (fast, not FIPS-approved)
-            let mut hasher = blake3::Hasher::new();
-            hasher.update(dev.path.as_bytes());
-            hasher.update(dev.name.as_bytes());
-            if let Some(ref s) = dev.serial {
-                hasher.update(s.as_bytes());
-            }
-            hasher.update(&dev.size.to_le_bytes());
-            hasher.update(&[dev.removable as u8, dev.is_system as u8]);
-            let hash = hasher.finalize();
-            hex::encode(&hash.as_bytes()[..16]) // 128-bit token
-        };
+        let token = super::compliance::fips_device_token(
+            &dev.path,
+            &dev.name,
+            dev.serial.as_deref(),
+            dev.size,
+            dev.removable,
+            dev.is_system,
+        );
 
         Self {
             path: dev.path.clone(),
@@ -411,7 +388,7 @@ pub async fn preflight_check(
         }
         Err(e) => {
             // Check if it's a regular file path (non-device target)
-            let is_file_path = Path::new(target).parent().map_or(false, |p| p.exists());
+            let is_file_path = Path::new(target).parent().is_some_and(|p| p.exists());
             if is_file_path {
                 checks.push(SafetyCheck {
                     id: "target_exists".into(),
@@ -541,11 +518,7 @@ pub async fn preflight_check(
                                 "Image {} ≤ Device {} ({}% of device)",
                                 humansize::format_size(image_size, humansize::BINARY),
                                 humansize::format_size(dev.size, humansize::BINARY),
-                                if dev.size > 0 {
-                                    image_size * 100 / dev.size
-                                } else {
-                                    0
-                                }
+                                (image_size * 100).checked_div(dev.size).unwrap_or(0)
                             )
                         } else {
                             format!(
@@ -643,7 +616,7 @@ pub async fn preflight_check(
         .filter(|c| !c.passed && c.severity == CheckSeverity::Warning)
         .count();
 
-    let fingerprint = device.as_ref().map(|d| DeviceFingerprint::from_device(d));
+    let fingerprint = device.as_ref().map(DeviceFingerprint::from_device);
 
     let report = SafetyReport {
         safe_to_proceed: errors == 0,

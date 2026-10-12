@@ -187,7 +187,10 @@ impl PersistResult {
         out.push_str("Persistent Storage Created\n");
         out.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
         out.push_str(&format!("Device:     {}\n", self.device));
-        out.push_str(&format!("Partition:  {} ({})\n", self.partition_path, self.partition_number));
+        out.push_str(&format!(
+            "Partition:  {} ({})\n",
+            self.partition_path, self.partition_number
+        ));
         out.push_str(&format!("Filesystem: {}\n", self.filesystem));
         out.push_str(&format!("Label:      {}\n", self.label));
         out.push_str(&format!(
@@ -259,8 +262,10 @@ pub fn find_free_space(device: &str, device_size: u64) -> Result<(u64, u64)> {
             if part_type == 0 {
                 continue; // Empty entry
             }
-            let start_lba = u32::from_le_bytes(mbr[offset + 8..offset + 12].try_into().unwrap_or([0; 4]));
-            let size_lba = u32::from_le_bytes(mbr[offset + 12..offset + 16].try_into().unwrap_or([0; 4]));
+            let start_lba =
+                u32::from_le_bytes(mbr[offset + 8..offset + 12].try_into().unwrap_or([0; 4]));
+            let size_lba =
+                u32::from_le_bytes(mbr[offset + 12..offset + 16].try_into().unwrap_or([0; 4]));
             let end_byte = (start_lba as u64 + size_lba as u64) * 512;
             if end_byte > last_end {
                 last_end = end_byte;
@@ -284,19 +289,15 @@ pub fn generate_persistence_conf(mode: &PersistenceMode) -> Option<String> {
 /// Estimate the minimum recommended size for persistent storage.
 pub fn recommended_min_size(mode: &PersistenceMode) -> u64 {
     match mode {
-        PersistenceMode::Casper => 256 * 1024 * 1024,      // 256 MiB
+        PersistenceMode::Casper => 256 * 1024 * 1024, // 256 MiB
         PersistenceMode::FedoraOverlay => 512 * 1024 * 1024, // 512 MiB
         PersistenceMode::PersistenceConf => 256 * 1024 * 1024,
-        PersistenceMode::VentoyDat => 128 * 1024 * 1024,    // 128 MiB
+        PersistenceMode::VentoyDat => 128 * 1024 * 1024, // 128 MiB
     }
 }
 
 /// Create a persistence image file (for Ventoy-style file-based persistence).
-pub fn create_persistence_image(
-    path: &Path,
-    size: u64,
-    _fs: PersistFs,
-) -> Result<()> {
+pub fn create_persistence_image(path: &Path, size: u64, _fs: PersistFs) -> Result<()> {
     // Create a sparse file of the requested size
     let file = std::fs::File::create(path)?;
     file.set_len(size)?;
@@ -414,7 +415,10 @@ mod tests {
     fn test_persistence_mode_label() {
         assert_eq!(PersistenceMode::Casper.expected_label(), "casper-rw");
         assert_eq!(PersistenceMode::FedoraOverlay.expected_label(), "LIVE");
-        assert_eq!(PersistenceMode::PersistenceConf.expected_label(), "persistence");
+        assert_eq!(
+            PersistenceMode::PersistenceConf.expected_label(),
+            "persistence"
+        );
     }
 
     #[test]

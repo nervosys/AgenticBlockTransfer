@@ -87,11 +87,23 @@ impl fmt::Display for Iso9660Info {
             humansize::format_size(self.volume_size_bytes, humansize::BINARY),
             self.volume_block_count
         )?;
-        writeln!(f, "  Bootable:          {}", if self.is_bootable { "Yes (El Torito)" } else { "No" })?;
+        writeln!(
+            f,
+            "  Bootable:          {}",
+            if self.is_bootable {
+                "Yes (El Torito)"
+            } else {
+                "No"
+            }
+        )?;
         if let Some(sector) = self.boot_catalog_sector {
             writeln!(f, "  Boot Catalog:      sector {}", sector)?;
         }
-        writeln!(f, "  Joliet Extensions: {}", if self.has_joliet { "Yes" } else { "No" })?;
+        writeln!(
+            f,
+            "  Joliet Extensions: {}",
+            if self.has_joliet { "Yes" } else { "No" }
+        )?;
         if !self.creation_date.is_empty() {
             writeln!(f, "  Created:           {}", self.creation_date)?;
         }
@@ -181,7 +193,7 @@ pub fn parse_iso9660<R: Read + Seek>(reader: &mut R) -> Result<Iso9660Info> {
                 if escape.windows(3).any(|w| {
                     w == [0x25, 0x2F, 0x40]  // %/@  — UCS-2 Level 1
                     || w == [0x25, 0x2F, 0x43]  // %/C  — UCS-2 Level 2
-                    || w == [0x25, 0x2F, 0x45]  // %/E  — UCS-2 Level 3
+                    || w == [0x25, 0x2F, 0x45] // %/E  — UCS-2 Level 3
                 }) {
                     info.has_joliet = true;
                 }
@@ -189,7 +201,11 @@ pub fn parse_iso9660<R: Read + Seek>(reader: &mut R) -> Result<Iso9660Info> {
 
             _ => {
                 // Unknown VD type — skip
-                log::debug!("Skipping unknown volume descriptor type {} at sector {}", vd_type, sector);
+                log::debug!(
+                    "Skipping unknown volume descriptor type {} at sector {}",
+                    vd_type,
+                    sector
+                );
             }
         }
 
@@ -267,7 +283,7 @@ fn parse_boot_record(buf: &[u8; 2048], info: &mut Iso9660Info) {
 fn read_strA(buf: &[u8], offset: usize, len: usize) -> String {
     let slice = &buf[offset..offset + len];
     String::from_utf8_lossy(slice)
-        .trim_end_matches(|c: char| c == ' ' || c == '\0')
+        .trim_end_matches([' ', '\0'])
         .to_string()
 }
 

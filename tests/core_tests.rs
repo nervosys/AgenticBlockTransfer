@@ -40,8 +40,10 @@ mod tests {
         fn detect_xz_magic() {
             let mut f = NamedTempFile::with_suffix(".bin").unwrap();
             // xz magic: 0xfd 0x37 0x7a 0x58 0x5a 0x00
-            f.write_all(&[0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-                .unwrap();
+            f.write_all(&[
+                0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ])
+            .unwrap();
             f.flush().unwrap();
             let fmt = detect_format(f.path()).unwrap();
             assert_eq!(fmt, ImageFormat::Xz);
@@ -84,7 +86,7 @@ mod tests {
         fn detect_by_extension_iso() {
             let f = NamedTempFile::with_suffix(".iso").unwrap();
             // Write some non-magic bytes — should fall back to extension
-            std::fs::write(f.path(), &[0u8; 16]).unwrap();
+            std::fs::write(f.path(), [0u8; 16]).unwrap();
             let fmt = detect_format(f.path()).unwrap();
             assert_eq!(fmt, ImageFormat::Iso);
         }
@@ -92,7 +94,7 @@ mod tests {
         #[test]
         fn detect_by_extension_img() {
             let f = NamedTempFile::with_suffix(".img").unwrap();
-            std::fs::write(f.path(), &[0u8; 16]).unwrap();
+            std::fs::write(f.path(), [0u8; 16]).unwrap();
             let fmt = detect_format(f.path()).unwrap();
             assert_eq!(fmt, ImageFormat::Img);
         }
@@ -100,7 +102,7 @@ mod tests {
         #[test]
         fn detect_by_extension_raw() {
             let f = NamedTempFile::with_suffix(".raw").unwrap();
-            std::fs::write(f.path(), &[0u8; 16]).unwrap();
+            std::fs::write(f.path(), [0u8; 16]).unwrap();
             let fmt = detect_format(f.path()).unwrap();
             assert_eq!(fmt, ImageFormat::Raw);
         }
@@ -119,7 +121,7 @@ mod tests {
         #[test]
         fn unknown_format_errors() {
             let f = NamedTempFile::with_suffix(".unknown_ext_xyz").unwrap();
-            std::fs::write(f.path(), &[0u8; 16]).unwrap();
+            std::fs::write(f.path(), [0u8; 16]).unwrap();
             assert!(detect_format(f.path()).is_err());
         }
 
@@ -184,32 +186,11 @@ mod tests {
         }
 
         #[test]
-        fn md5_hello() {
-            let hash = hash_bytes(b"hello", HashAlgorithm::Md5);
-            assert_eq!(hash, "5d41402abc4b2a76b9719d911017c592");
-        }
-
-        #[test]
-        fn sha1_hello() {
-            let hash = hash_bytes(b"hello", HashAlgorithm::Sha1);
-            assert_eq!(hash, "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d");
-        }
-
-        #[test]
         fn sha512_hello() {
             let hash = hash_bytes(b"hello", HashAlgorithm::Sha512);
             assert_eq!(
                 hash,
                 "9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043"
-            );
-        }
-
-        #[test]
-        fn blake3_hello() {
-            let hash = hash_bytes(b"hello", HashAlgorithm::Blake3);
-            assert_eq!(
-                hash,
-                "ea8f163db38682925e4491c5e58d4bb3506ef8c14eb78a86e908c5624a67200f"
             );
         }
 
@@ -223,11 +204,8 @@ mod tests {
         fn all_algorithms_produce_output() {
             let data = b"test data for all algorithms";
             for algo in [
-                HashAlgorithm::Md5,
-                HashAlgorithm::Sha1,
                 HashAlgorithm::Sha256,
                 HashAlgorithm::Sha512,
-                HashAlgorithm::Blake3,
                 HashAlgorithm::Crc32,
             ] {
                 let hash = hash_bytes(data, algo);
@@ -413,7 +391,10 @@ mod tests {
                 "/dev/sda"
             );
             assert_eq!(
-                format!("{}", ImageSource::Url("https://example.com/image.iso".to_string())),
+                format!(
+                    "{}",
+                    ImageSource::Url("https://example.com/image.iso".to_string())
+                ),
                 "https://example.com/image.iso"
             );
             assert_eq!(format!("{}", ImageSource::Stdin), "<stdin>");
@@ -429,7 +410,6 @@ mod tests {
         #[test]
         fn hash_algorithm_display() {
             assert_eq!(format!("{}", HashAlgorithm::Sha256), "SHA-256");
-            assert_eq!(format!("{}", HashAlgorithm::Blake3), "BLAKE3");
             assert_eq!(format!("{}", HashAlgorithm::Crc32), "CRC32");
         }
 
@@ -632,10 +612,7 @@ mod tests {
 
             let info = get_image_info(f.path()).unwrap();
             assert_eq!(info.size, 1024);
-            assert_eq!(
-                info.format,
-                abt::core::types::ImageFormat::Iso,
-            );
+            assert_eq!(info.format, abt::core::types::ImageFormat::Iso,);
         }
 
         #[test]

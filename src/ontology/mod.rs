@@ -258,7 +258,7 @@ fn build_capabilities() -> Vec<Capability> {
                     name: "hash_algorithm".to_string(),
                     cli_flag: "--hash-algorithm".to_string(),
                     description: "Hash algorithm for pre-write and post-write verification".to_string(),
-                    param_type: ParamType::Enum(vec!["md5".to_string(), "sha1".to_string(), "sha256".to_string(), "sha512".to_string(), "blake3".to_string(), "crc32".to_string()]),
+                    param_type: ParamType::Enum(vec!["sha256".to_string(), "sha512".to_string(), "crc32".to_string()]),
                     required: false,
                     default: Some(json!("sha256")),
                     constraints: None,
@@ -305,7 +305,7 @@ fn build_capabilities() -> Vec<Capability> {
                     param_type: ParamType::String,
                     required: false,
                     default: None,
-                    constraints: Some(json!({"format": "hex-encoded 128-bit BLAKE3 hash", "source": "abt list --json → devices[].confirm_token"})),
+                    constraints: Some(json!({"format": "hex-encoded 128-bit SHA-256 device fingerprint", "source": "abt list --json → devices[].confirm_token"})),
                     examples: vec!["a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6".to_string()],
                     semantic_type: None,
                 },
@@ -452,7 +452,7 @@ fn build_capabilities() -> Vec<Capability> {
                     name: "hash_algorithm".to_string(),
                     cli_flag: "--hash-algorithm".to_string(),
                     description: "Hash algorithm to use".to_string(),
-                    param_type: ParamType::Enum(vec!["md5".to_string(), "sha256".to_string(), "sha512".to_string(), "blake3".to_string()]),
+                    param_type: ParamType::Enum(vec!["sha256".to_string(), "sha512".to_string()]),
                     required: false,
                     default: Some(json!("sha256")),
                     constraints: None,
@@ -558,7 +558,7 @@ fn build_capabilities() -> Vec<Capability> {
                                     "mount_points": {"type": "array", "items": {"type": "string"}},
                                     "safe_target": {"type": "boolean", "description": "Whether this device can be safely written to"},
                                     "removable_media": {"type": "boolean"},
-                                    "confirm_token": {"type": "string", "description": "BLAKE3-based device fingerprint for --confirm-token"}
+                                    "confirm_token": {"type": "string", "description": "SHA-256-based device fingerprint for --confirm-token"}
                                 }
                             }
                         },
@@ -646,7 +646,7 @@ fn build_capabilities() -> Vec<Capability> {
         Capability {
             id: "checksum".to_string(),
             name: "Compute Checksum".to_string(),
-            description: "Compute cryptographic checksums/hashes (MD5, SHA-256, SHA-512, BLAKE3, CRC32) \
+            description: "Compute cryptographic checksums/hashes (SHA-256, SHA-512, CRC32) \
                 of files or block devices."
                 .to_string(),
             category: CapabilityCategory::Verification,
@@ -667,11 +667,11 @@ fn build_capabilities() -> Vec<Capability> {
                     name: "algorithm".to_string(),
                     cli_flag: "-a, --algorithm".to_string(),
                     description: "Hash algorithm(s) to compute (can specify multiple)".to_string(),
-                    param_type: ParamType::Enum(vec!["md5".to_string(), "sha1".to_string(), "sha256".to_string(), "sha512".to_string(), "blake3".to_string(), "crc32".to_string()]),
+                    param_type: ParamType::Enum(vec!["sha256".to_string(), "sha512".to_string(), "crc32".to_string()]),
                     required: false,
                     default: Some(json!("sha256")),
                     constraints: None,
-                    examples: vec!["sha256".to_string(), "blake3".to_string()],
+                    examples: vec!["sha256".to_string(), "sha512".to_string()],
                     semantic_type: None,
                 },
             ],
@@ -693,7 +693,7 @@ fn build_capabilities() -> Vec<Capability> {
                 },
                 Example {
                     description: "Multiple algorithms".to_string(),
-                    command: "abt checksum firmware.bin -a sha256 -a blake3".to_string(),
+                    command: "abt checksum firmware.bin -a sha256 -a sha512".to_string(),
                     use_case: "Generate multiple checksums for distribution".to_string(),
                 },
             ],
@@ -916,7 +916,7 @@ fn remaining_capabilities() -> Vec<Capability> {
         cap("persist", "Persistence Partition", "Create a persistent storage partition for a live Linux USB.", CapabilityCategory::DeviceManagement, true, true, true, &["Repartitions the target."]),
         cap("update", "Self Update", "Check for abt updates and optionally self-update.", CapabilityCategory::Meta, true, false, false, &["Replaces the installed abt binary, which may require elevation depending on the install path."]),
         cap("mirror", "Download Mirrors", "Manage download mirrors: probe latency, failover, metalink.", CapabilityCategory::Meta, false, false, true, &[]),
-        cap("checksum-file", "Checksum Files", "Parse and verify checksum files such as SHA256SUMS and MD5SUMS.", CapabilityCategory::Verification, false, false, true, &[]),
+        cap("checksum-file", "Checksum Files", "Parse and verify checksum files such as SHA256SUMS and SHA512SUMS.", CapabilityCategory::Verification, false, false, true, &[]),
         cap("usb-info", "USB Speed Info", "Show USB device speed information and write-time estimates.", CapabilityCategory::Information, true, false, true, &[]),
         cap("signature", "Signature Verification", "Verify signed downloads using RSA PKCS#1 v1.5 signature verification.", CapabilityCategory::Verification, false, false, true, &[]),
         cap("wue", "Windows Unattend", "Generate a Windows Unattended Setup file (unattend.xml) for automated installation.", CapabilityCategory::Meta, false, false, true, &["Any credentials placed in the answer file are stored in it."]),
@@ -1006,11 +1006,8 @@ fn build_type_definitions() -> Vec<TypeDefinition> {
             name: "HashAlgorithm".to_string(),
             description: "Supported hash/checksum algorithms".to_string(),
             values: vec![
-                TypeValue { value: "md5".to_string(), description: "MD5 (legacy, fast, not cryptographically secure)".to_string() },
-                TypeValue { value: "sha1".to_string(), description: "SHA-1 (deprecated, backward compat)".to_string() },
                 TypeValue { value: "sha256".to_string(), description: "SHA-256 (recommended default)".to_string() },
                 TypeValue { value: "sha512".to_string(), description: "SHA-512 (maximum security)".to_string() },
-                TypeValue { value: "blake3".to_string(), description: "BLAKE3 (fastest, modern, secure)".to_string() },
                 TypeValue { value: "crc32".to_string(), description: "CRC32 (fast error detection, not cryptographic)".to_string() },
             ],
         },

@@ -1,5 +1,5 @@
-use anyhow::Result;
 use super::types::Filesystem;
+use anyhow::Result;
 
 /// Format a device with the specified filesystem.
 /// This dispatches to platform-specific formatting utilities.
@@ -135,10 +135,7 @@ async fn format_macos(
         .await?;
 
     if !output.status.success() {
-        anyhow::bail!(
-            "Format failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+        anyhow::bail!("Format failed: {}", String::from_utf8_lossy(&output.stderr));
     }
 
     Ok(())
@@ -155,7 +152,10 @@ async fn format_windows(
         Filesystem::Fat32 => "FAT32",
         Filesystem::ExFat => "exFAT",
         Filesystem::Ntfs => "NTFS",
-        _ => anyhow::bail!("Filesystem {:?} not directly supported on Windows", filesystem),
+        _ => anyhow::bail!(
+            "Filesystem {:?} not directly supported on Windows",
+            filesystem
+        ),
     };
 
     let vol_label = label.unwrap_or("ABT");
@@ -177,10 +177,7 @@ async fn format_windows(
         .await?;
 
     if !output.status.success() {
-        anyhow::bail!(
-            "Format failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+        anyhow::bail!("Format failed: {}", String::from_utf8_lossy(&output.stderr));
     }
 
     Ok(())
@@ -191,7 +188,7 @@ async fn zero_device(device_path: &str) -> Result<()> {
     use std::io::Write;
     let mut file = std::fs::OpenOptions::new().write(true).open(device_path)?;
     let zeros = vec![0u8; 1024 * 1024]; // 1 MiB of zeros
-    // Write 1 MiB to wipe partition table/header
+                                        // Write 1 MiB to wipe partition table/header
     file.write_all(&zeros)?;
     file.flush()?;
     Ok(())

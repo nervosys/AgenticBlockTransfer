@@ -5,6 +5,20 @@ All notable changes to AgenticBlockTransfer (abt) will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+- **RSA signature verification did not verify signatures.** `abt signature --signature <sig> --keyring <ring>` reported "Signature VALID" for any file, given any signature blob of the key's size and a keyring containing a key. The verifier now performs the RFC 8017 PKCS#1 v1.5 check. Affected: 1.6.0, 1.7.0, and 1.7.1 (signed-download and self-update paths were not gated by it). Anyone who relied on `abt signature` results from those versions should re-verify.
+
+### Changed
+- SHA-256, SHA-512, HMAC-SHA256, and RSA now use the IronCrypto crate (`ironcrypto` 0.2.24).
+- Device fingerprints (`abt list` `confirm_token`) are now SHA-256 truncated to 128 bits in every mode. Tokens from earlier versions (BLAKE3) no longer match.
+- `--hash-algorithm` on `clone`, `verify`, and `write` rejects unknown names with an error. It previously fell back to SHA-256 silently in `verify` and `write`.
+- Checksum files: MD5, SHA-1, and BLAKE3 entries are skipped with a warning. Lines whose hash length doesn't match the file's algorithm are skipped rather than read as SHA-256.
+
+### Removed
+- MD5, SHA-1, and BLAKE3 hashing, along with the `md-5`, `sha1`, and `blake3` dependencies. Affects `--hash-algorithm`, `abt checksum`, checksum-file verification, mirror metalink MD5 fields, and resume checkpoints that recorded these algorithms.
+
 ## [1.7.0] - 2026-03-02
 
 ### Added

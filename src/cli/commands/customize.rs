@@ -2,7 +2,8 @@ use anyhow::{anyhow, Result};
 
 use crate::cli::CustomizeOpts;
 use crate::core::customize::{
-    CustomizationFormat, OsCustomization, SshConfig, UserAccount, WifiConfig, WifiSecurity, LocaleConfig,
+    CustomizationFormat, LocaleConfig, OsCustomization, SshConfig, UserAccount, WifiConfig,
+    WifiSecurity,
 };
 
 pub async fn execute(opts: CustomizeOpts) -> Result<()> {
@@ -15,18 +16,20 @@ pub async fn execute(opts: CustomizeOpts) -> Result<()> {
             }
 
             if let Some(username) = &opts.username {
-                let mut user = UserAccount::default();
-                user.username = username.clone();
-                if let Some(pw) = &opts.password {
-                    user.password_hash = Some(pw.clone());
-                }
+                let user = UserAccount {
+                    username: username.clone(),
+                    password_hash: opts.password.clone(),
+                    ..Default::default()
+                };
                 customization.users.push(user);
             }
 
             if opts.enable_ssh || opts.ssh_key.is_some() {
-                let mut ssh = SshConfig::default();
-                ssh.enable = true;
-                ssh.password_auth = opts.enable_ssh;
+                let mut ssh = SshConfig {
+                    enable: true,
+                    password_auth: opts.enable_ssh,
+                    ..Default::default()
+                };
                 if let Some(key) = &opts.ssh_key {
                     ssh.authorized_keys = vec![key.clone()];
                 }
@@ -69,9 +72,7 @@ pub async fn execute(opts: CustomizeOpts) -> Result<()> {
                 .iter()
                 .filter(|(name, _)| match format {
                     CustomizationFormat::FirstrunScript => name == "firstrun.sh",
-                    CustomizationFormat::CloudInit => {
-                        name == "user-data" || name == "meta-data"
-                    }
+                    CustomizationFormat::CloudInit => name == "user-data" || name == "meta-data",
                     CustomizationFormat::NetworkConfig => name == "network-config",
                 })
                 .collect();

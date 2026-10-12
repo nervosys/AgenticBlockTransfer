@@ -15,7 +15,7 @@ use anyhow::{bail, Result};
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use std::io::Read;
-use std::path::{PathBuf};
+use std::path::PathBuf;
 
 /// Checkpoint data persisted between interrupted sessions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -66,7 +66,13 @@ impl WriteCheckpoint {
     pub fn checkpoint_path(target: &str) -> PathBuf {
         let sanitized: String = target
             .chars()
-            .map(|c| if c.is_alphanumeric() || c == '.' || c == '-' { c } else { '_' })
+            .map(|c| {
+                if c.is_alphanumeric() || c == '.' || c == '-' {
+                    c
+                } else {
+                    '_'
+                }
+            })
             .collect();
         std::env::temp_dir().join(format!("abt-checkpoint-{}.json", sanitized))
     }
@@ -76,7 +82,11 @@ impl WriteCheckpoint {
         let path = Self::checkpoint_path(&self.target);
         let json = serde_json::to_string_pretty(self)?;
         std::fs::write(&path, &json)?;
-        info!("Checkpoint saved: {} ({} bytes written)", path.display(), self.bytes_written);
+        info!(
+            "Checkpoint saved: {} ({} bytes written)",
+            path.display(),
+            self.bytes_written
+        );
         Ok(path)
     }
 
@@ -150,11 +160,8 @@ impl WriteCheckpoint {
         use crate::core::types::HashAlgorithm;
 
         let algo: HashAlgorithm = match self.algorithm.to_lowercase().as_str() {
-            "md5" => HashAlgorithm::Md5,
-            "sha1" => HashAlgorithm::Sha1,
             "sha256" => HashAlgorithm::Sha256,
             "sha512" => HashAlgorithm::Sha512,
-            "blake3" => HashAlgorithm::Blake3,
             "crc32" => HashAlgorithm::Crc32,
             _ => bail!("Unknown hash algorithm in checkpoint: {}", self.algorithm),
         };
@@ -197,11 +204,7 @@ pub struct ResumeInfo {
 
 /// Attempt to load and validate a resume checkpoint for a write operation.
 /// Returns None if no valid checkpoint exists.
-pub fn try_resume(
-    source: &str,
-    target: &str,
-    algorithm: &str,
-) -> Result<Option<ResumeInfo>> {
+pub fn try_resume(source: &str, target: &str, algorithm: &str) -> Result<Option<ResumeInfo>> {
     let checkpoint = match WriteCheckpoint::load(target)? {
         Some(cp) => cp,
         None => return Ok(None),
@@ -296,7 +299,7 @@ mod tests {
     #[test]
     fn checkpoint_validate_algo_mismatch() {
         let cp = WriteCheckpoint::new("src.img", "tgt.img", 1024, "hash", "sha256", 4096);
-        assert!(cp.validate("src.img", "tgt.img", "blake3").is_err());
+        assert!(cp.validate("src.img", "tgt.img", "sha512").is_err());
     }
 
     #[test]

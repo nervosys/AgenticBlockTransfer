@@ -88,8 +88,8 @@ pub async fn execute(opts: ListOpts, output_format: &OutputFormat) -> Result<()>
 
     // Print header
     println!(
-        "{:<25} {:<30} {:>12} {:<8} {:<10} {}",
-        "DEVICE", "NAME", "SIZE", "TYPE", "REMOVABLE", "MOUNT POINTS"
+        "{:<25} {:<30} {:>12} {:<8} {:<10} MOUNT POINTS",
+        "DEVICE", "NAME", "SIZE", "TYPE", "REMOVABLE"
     );
     println!("{}", "-".repeat(100));
 
@@ -108,10 +108,7 @@ pub async fn execute(opts: ListOpts, output_format: &OutputFormat) -> Result<()>
             "{:<25} {:<30} {:>12} {:<8} {:<10} {}{}",
             dev.path, dev.name, size, dev.device_type, removable, mounts, system_marker
         );
-        println!(
-            "  └─ confirm-token: {}",
-            fp.token
-        );
+        println!("  └─ confirm-token: {}", fp.token);
     }
 
     println!();

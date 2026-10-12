@@ -97,25 +97,40 @@ impl OsType {
     /// Detect OS type from ISO filename and metadata.
     pub fn detect(filename: &str) -> Self {
         let lower = filename.to_lowercase();
-        if lower.contains("ubuntu") || lower.contains("kubuntu") || lower.contains("xubuntu")
-            || lower.contains("mint") || lower.contains("debian") || lower.contains("pop_os")
+        if lower.contains("ubuntu")
+            || lower.contains("kubuntu")
+            || lower.contains("xubuntu")
+            || lower.contains("mint")
+            || lower.contains("debian")
+            || lower.contains("pop_os")
         {
             Self::Ubuntu
-        } else if lower.contains("fedora") || lower.contains("centos") || lower.contains("rhel")
-            || lower.contains("rocky") || lower.contains("alma")
+        } else if lower.contains("fedora")
+            || lower.contains("centos")
+            || lower.contains("rhel")
+            || lower.contains("rocky")
+            || lower.contains("alma")
         {
             Self::Fedora
-        } else if lower.contains("arch") || lower.contains("manjaro") || lower.contains("endeavour") {
+        } else if lower.contains("arch") || lower.contains("manjaro") || lower.contains("endeavour")
+        {
             Self::Arch
-        } else if lower.contains("freebsd") || lower.contains("openbsd") || lower.contains("netbsd") {
+        } else if lower.contains("freebsd") || lower.contains("openbsd") || lower.contains("netbsd")
+        {
             Self::Bsd
         } else if lower.contains("windows") || lower.contains("win10") || lower.contains("win11") {
             Self::Windows
         } else if lower.contains("macos") || lower.contains("osx") || lower.contains("darwin") {
             Self::MacOs
-        } else if lower.contains("linux") || lower.contains("live") || lower.contains("suse")
-            || lower.contains("gentoo") || lower.contains("slackware") || lower.contains("kali")
-            || lower.contains("tails") || lower.contains("void") || lower.contains("nixos")
+        } else if lower.contains("linux")
+            || lower.contains("live")
+            || lower.contains("suse")
+            || lower.contains("gentoo")
+            || lower.contains("slackware")
+            || lower.contains("kali")
+            || lower.contains("tails")
+            || lower.contains("void")
+            || lower.contains("nixos")
         {
             Self::Linux
         } else {
@@ -192,8 +207,8 @@ pub fn read_registry(mount_point: &Path) -> Result<MultibootRegistry> {
     let data = std::fs::read_to_string(&registry_path)
         .with_context(|| format!("Failed to read registry: {}", registry_path.display()))?;
 
-    let registry: MultibootRegistry = serde_json::from_str(&data)
-        .with_context(|| "Failed to parse multiboot registry")?;
+    let registry: MultibootRegistry =
+        serde_json::from_str(&data).with_context(|| "Failed to parse multiboot registry")?;
 
     Ok(registry)
 }
@@ -201,8 +216,7 @@ pub fn read_registry(mount_point: &Path) -> Result<MultibootRegistry> {
 /// Write the multi-boot registry to a mounted data partition.
 pub fn write_registry(mount_point: &Path, registry: &MultibootRegistry) -> Result<()> {
     let registry_path = mount_point.join("abt-multiboot.json");
-    let data = serde_json::to_string_pretty(registry)
-        .context("Failed to serialize registry")?;
+    let data = serde_json::to_string_pretty(registry).context("Failed to serialize registry")?;
 
     std::fs::write(&registry_path, data)
         .with_context(|| format!("Failed to write registry: {}", registry_path.display()))?;
@@ -256,16 +270,14 @@ pub fn add_image(
     let os_type = OsType::detect(&filename);
 
     // Display name
-    let display_name = name
-        .map(|n| n.to_string())
-        .unwrap_or_else(|| {
-            let stem = iso_path
-                .file_stem()
-                .unwrap_or_default()
-                .to_string_lossy()
-                .to_string();
-            format!("{} ({})", os_type.label(), stem)
-        });
+    let display_name = name.map(|n| n.to_string()).unwrap_or_else(|| {
+        let stem = iso_path
+            .file_stem()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
+        format!("{} ({})", os_type.label(), stem)
+    });
 
     // Add to registry
     registry.images.push(MultibootImage {
@@ -294,7 +306,11 @@ pub fn add_image(
         image_count: registry.images.len(),
         total_size,
         free_space: None,
-        message: format!("Added '{}' ({} images total)", display_name, registry.images.len()),
+        message: format!(
+            "Added '{}' ({} images total)",
+            display_name,
+            registry.images.len()
+        ),
     })
 }
 
@@ -454,9 +470,9 @@ fn generate_menu_entry(index: usize, image: &MultibootImage) -> String {
 
 /// Compute SHA-256 hash of a file.
 fn compute_file_hash(path: &Path) -> Result<String> {
-    use sha2::Digest;
+    use ironcrypto::prelude::Digest;
     let mut file = std::fs::File::open(path)?;
-    let mut hasher = sha2::Sha256::new();
+    let mut hasher = ironcrypto::hash::Sha256::new();
     let mut buf = vec![0u8; 1024 * 1024];
 
     loop {
@@ -531,14 +547,29 @@ mod tests {
 
     #[test]
     fn test_os_type_detection() {
-        assert_eq!(OsType::detect("ubuntu-24.04-desktop-amd64.iso"), OsType::Ubuntu);
+        assert_eq!(
+            OsType::detect("ubuntu-24.04-desktop-amd64.iso"),
+            OsType::Ubuntu
+        );
         assert_eq!(OsType::detect("Fedora-Workstation-41.iso"), OsType::Fedora);
-        assert_eq!(OsType::detect("archlinux-2024.01.01-x86_64.iso"), OsType::Arch);
-        assert_eq!(OsType::detect("FreeBSD-14.0-RELEASE-amd64-disc1.iso"), OsType::Bsd);
+        assert_eq!(
+            OsType::detect("archlinux-2024.01.01-x86_64.iso"),
+            OsType::Arch
+        );
+        assert_eq!(
+            OsType::detect("FreeBSD-14.0-RELEASE-amd64-disc1.iso"),
+            OsType::Bsd
+        );
         assert_eq!(OsType::detect("Windows11_23H2.iso"), OsType::Windows);
         assert_eq!(OsType::detect("random-utility.iso"), OsType::Unknown);
-        assert_eq!(OsType::detect("kali-linux-2024.1-live-amd64.iso"), OsType::Linux);
-        assert_eq!(OsType::detect("linuxmint-21.3-cinnamon-64bit.iso"), OsType::Ubuntu);
+        assert_eq!(
+            OsType::detect("kali-linux-2024.1-live-amd64.iso"),
+            OsType::Linux
+        );
+        assert_eq!(
+            OsType::detect("linuxmint-21.3-cinnamon-64bit.iso"),
+            OsType::Ubuntu
+        );
     }
 
     #[test]
@@ -664,12 +695,15 @@ mod tests {
 
         let iso_tmp = tempfile::tempdir().unwrap();
         let iso_path = iso_tmp.path().join("test.iso");
-        std::fs::write(&iso_path, &[0u8; 1024]).unwrap();
+        std::fs::write(&iso_path, [0u8; 1024]).unwrap();
 
         add_image(tmp.path(), &iso_path, None).unwrap();
         let result = add_image(tmp.path(), &iso_path, None);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("already installed"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("already installed"));
     }
 
     #[test]

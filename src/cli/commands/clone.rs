@@ -4,20 +4,20 @@ use anyhow::Result;
 use log::info;
 
 use crate::cli::{self, CloneOpts};
-use crate::core::clone::{CloneConfig, clone_device};
+use crate::core::clone::{clone_device, CloneConfig};
 use crate::core::progress::Progress;
 use crate::core::types::HashAlgorithm;
 
 pub async fn execute(opts: CloneOpts) -> Result<()> {
     let block_size = cli::parse_block_size(&opts.block_size)?;
     let hash_algorithm = match opts.hash_algorithm.to_lowercase().as_str() {
-        "md5" => HashAlgorithm::Md5,
-        "sha1" => HashAlgorithm::Sha1,
         "sha256" | "sha-256" => HashAlgorithm::Sha256,
         "sha512" | "sha-512" => HashAlgorithm::Sha512,
-        "blake3" => HashAlgorithm::Blake3,
         "crc32" => HashAlgorithm::Crc32,
-        other => anyhow::bail!("Unknown hash algorithm: {}", other),
+        other => anyhow::bail!(
+            "Unknown or unsupported hash algorithm: {} (supported: sha256, sha512, crc32)",
+            other
+        ),
     };
 
     let config = CloneConfig {
@@ -36,11 +36,7 @@ pub async fn execute(opts: CloneOpts) -> Result<()> {
 
     info!(
         "Cloning {} -> {} (block_size={}, verify={}, sparse={})",
-        opts.source,
-        opts.target,
-        opts.block_size,
-        opts.verify,
-        opts.sparse
+        opts.source, opts.target, opts.block_size, opts.verify, opts.sparse
     );
 
     let result = clone_device(&config, &progress)?;
