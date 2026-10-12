@@ -12,6 +12,12 @@ impl LinuxDeviceEnumerator {
     }
 }
 
+impl Default for LinuxDeviceEnumerator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait::async_trait]
 impl DeviceEnumerator for LinuxDeviceEnumerator {
     async fn list_devices(&self) -> Result<Vec<DeviceInfo>> {

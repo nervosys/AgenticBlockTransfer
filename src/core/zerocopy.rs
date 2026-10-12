@@ -70,9 +70,7 @@ pub fn transfer(
 
     #[cfg(any(target_os = "macos", target_os = "freebsd"))]
     {
-        // sendfile(2) moves the whole file itself and takes no block size.
-        let _ = block_size;
-        transfer_sendfile(source, target, byte_limit, progress)
+        transfer_sendfile(source, target, block_size, byte_limit, progress)
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "freebsd")))]
@@ -110,7 +108,7 @@ fn transfer_splice(
     let (pipe_read, pipe_write) =
         nix::unistd::pipe().context("Failed to create pipe for splice")?;
 
-    let pipe_size = block_size.min(1024 * 1024) as usize; // Cap pipe at 1 MiB
+    let pipe_size = block_size.min(1024 * 1024); // Cap pipe at 1 MiB
     let max_bytes = byte_limit.unwrap_or(u64::MAX);
     let mut total: u64 = 0;
 
@@ -189,6 +187,7 @@ fn transfer_splice(
 fn transfer_sendfile(
     source: &Path,
     target: &Path,
+    block_size: usize,
     byte_limit: Option<u64>,
     progress: &Progress,
 ) -> Result<ZeroCopyResult> {
@@ -246,6 +245,11 @@ fn transfer_sendfile(
             };
             if rc == -1 && len == 0 {
                 let err = std::io::Error::last_os_error();
+                // sendfile(2) copies only into a socket. A regular-file destination
+                // fails with ENOTSOCK, so use the standard copy path instead.
+                if err.raw_os_error() == Some(libc::ENOTSOCK) {
+                    return transfer_fallback(source, target, block_size, byte_limit, progress);
+                }
                 if err.kind() == std::io::ErrorKind::Other {
                     break; // EOF or unsupported
                 }

@@ -153,7 +153,7 @@ pub fn detect_firmware_mode() -> FirmwareMode {
         if Path::new("/sys/firmware/efi").exists() {
             return FirmwareMode::Uefi;
         }
-        return FirmwareMode::LegacyBios;
+        FirmwareMode::LegacyBios
     }
 
     #[cfg(target_os = "windows")]

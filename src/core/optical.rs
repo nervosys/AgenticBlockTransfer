@@ -285,10 +285,8 @@ pub fn detect_drives() -> Result<Vec<String>> {
                 drives.push(path);
             }
         }
-        if drives.is_empty() {
-            if Path::new("/dev/cdrom").exists() {
-                drives.push("/dev/cdrom".into());
-            }
+        if drives.is_empty() && Path::new("/dev/cdrom").exists() {
+            drives.push("/dev/cdrom".into());
         }
     }
 

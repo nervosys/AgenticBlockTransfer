@@ -299,14 +299,14 @@ fn scan_linux(target: &str, config: &LockScanConfig, result: &mut LockScanResult
         }
 
         // Read process name
-        let comm_path = proc_dir.join(&pid_str.to_string()).join("comm");
+        let comm_path = proc_dir.join(pid_str.to_string()).join("comm");
         let proc_name = fs::read_to_string(&comm_path)
             .unwrap_or_default()
             .trim()
             .to_string();
 
         // Check /proc/<pid>/fd/ symlinks
-        let fd_dir = proc_dir.join(&pid_str.to_string()).join("fd");
+        let fd_dir = proc_dir.join(pid_str.to_string()).join("fd");
         if let Ok(fd_entries) = fs::read_dir(&fd_dir) {
             for fd_entry in fd_entries.flatten() {
                 if let Ok(link_target) = fs::read_link(fd_entry.path()) {
@@ -317,7 +317,7 @@ fn scan_linux(target: &str, config: &LockScanConfig, result: &mut LockScanResult
                                 pid,
                                 name: proc_name.clone(),
                                 command: fs::read_to_string(
-                                    proc_dir.join(&pid_str.to_string()).join("cmdline"),
+                                    proc_dir.join(pid_str.to_string()).join("cmdline"),
                                 )
                                 .ok()
                                 .map(|s| s.replace('\0', " ").trim().to_string()),
@@ -336,7 +336,7 @@ fn scan_linux(target: &str, config: &LockScanConfig, result: &mut LockScanResult
         }
 
         // Check /proc/<pid>/cwd
-        let cwd_path = proc_dir.join(&pid_str.to_string()).join("cwd");
+        let cwd_path = proc_dir.join(pid_str.to_string()).join("cwd");
         if let Ok(cwd_target) = fs::read_link(&cwd_path) {
             let cwd_str = cwd_target.to_string_lossy().to_string();
             for mp in &mount_points {

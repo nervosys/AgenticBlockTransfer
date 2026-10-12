@@ -208,7 +208,7 @@ fn write_uring_linux(
 
         let write_slice = if config.direct_io && filled < block_size {
             // O_DIRECT requires sector-aligned writes; pad to sector boundary
-            let aligned_size = ((filled + 511) / 512) * 512;
+            let aligned_size = filled.div_ceil(512) * 512;
             // Zero-pad
             let end = aligned_size.min(buf.len());
             for byte in buf[filled..end].iter_mut() {
