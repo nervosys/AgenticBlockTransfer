@@ -108,10 +108,7 @@ pub async fn execute(opts: ListOpts, output_format: &OutputFormat) -> Result<()>
             "{:<25} {:<30} {:>12} {:<8} {:<10} {}{}",
             dev.path, dev.name, size, dev.device_type, removable, mounts, system_marker
         );
-        println!(
-            "  └─ confirm-token: {}",
-            fp.token
-        );
+        println!("  └─ confirm-token: {}", fp.token);
     }
 
     println!();

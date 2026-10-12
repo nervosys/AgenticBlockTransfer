@@ -74,11 +74,7 @@ mod integration {
         ] {
             let src_hash = hash_file(source.path(), algo, &progress).unwrap();
             let tgt_hash = hash_file(target.path(), algo, &progress).unwrap();
-            assert_eq!(
-                src_hash, tgt_hash,
-                "{} hash mismatch after copy",
-                algo
-            );
+            assert_eq!(src_hash, tgt_hash, "{} hash mismatch after copy", algo);
         }
     }
 
@@ -110,9 +106,13 @@ mod integration {
         // Decompress via open_image and hash
         let mut reader = abt::core::image::open_image(compressed.path()).unwrap();
         let progress2 = Progress::new(0);
-        let decompressed_hash = hash_reader(&mut reader, HashAlgorithm::Sha256, &progress2).unwrap();
+        let decompressed_hash =
+            hash_reader(&mut reader, HashAlgorithm::Sha256, &progress2).unwrap();
 
-        assert_eq!(original_hash, decompressed_hash, "gzip decompress hash mismatch");
+        assert_eq!(
+            original_hash, decompressed_hash,
+            "gzip decompress hash mismatch"
+        );
     }
 
     #[test]
@@ -138,9 +138,13 @@ mod integration {
 
         let mut reader = abt::core::image::open_image(compressed.path()).unwrap();
         let progress2 = Progress::new(0);
-        let decompressed_hash = hash_reader(&mut reader, HashAlgorithm::Sha256, &progress2).unwrap();
+        let decompressed_hash =
+            hash_reader(&mut reader, HashAlgorithm::Sha256, &progress2).unwrap();
 
-        assert_eq!(original_hash, decompressed_hash, "xz decompress hash mismatch");
+        assert_eq!(
+            original_hash, decompressed_hash,
+            "xz decompress hash mismatch"
+        );
     }
 
     #[test]
@@ -165,9 +169,13 @@ mod integration {
 
         let mut reader = abt::core::image::open_image(compressed.path()).unwrap();
         let progress2 = Progress::new(0);
-        let decompressed_hash = hash_reader(&mut reader, HashAlgorithm::Sha256, &progress2).unwrap();
+        let decompressed_hash =
+            hash_reader(&mut reader, HashAlgorithm::Sha256, &progress2).unwrap();
 
-        assert_eq!(original_hash, decompressed_hash, "bzip2 decompress hash mismatch");
+        assert_eq!(
+            original_hash, decompressed_hash,
+            "bzip2 decompress hash mismatch"
+        );
     }
 
     #[test]
@@ -192,9 +200,13 @@ mod integration {
 
         let mut reader = abt::core::image::open_image(compressed.path()).unwrap();
         let progress2 = Progress::new(0);
-        let decompressed_hash = hash_reader(&mut reader, HashAlgorithm::Sha256, &progress2).unwrap();
+        let decompressed_hash =
+            hash_reader(&mut reader, HashAlgorithm::Sha256, &progress2).unwrap();
 
-        assert_eq!(original_hash, decompressed_hash, "zstd decompress hash mismatch");
+        assert_eq!(
+            original_hash, decompressed_hash,
+            "zstd decompress hash mismatch"
+        );
     }
 
     // ── Image info with compressed formats ─────────────────────────────────
@@ -369,7 +381,8 @@ verbose = 4
         use abt::core::verifier::verify_against_hash;
 
         let mut f = NamedTempFile::new().unwrap();
-        f.write_all(b"hello world extra data that should be ignored").unwrap();
+        f.write_all(b"hello world extra data that should be ignored")
+            .unwrap();
         f.flush().unwrap();
 
         let progress = Progress::new(0);

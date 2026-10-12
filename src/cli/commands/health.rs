@@ -12,7 +12,12 @@ pub async fn execute(opts: HealthOpts) -> Result<()> {
         "slc" => TestPattern::Slc,
         "mlc" => TestPattern::Mlc,
         "tlc" => TestPattern::Tlc,
-        other => return Err(anyhow!("unknown pattern '{}'. Use: quick, standard, slc, mlc, tlc", other)),
+        other => {
+            return Err(anyhow!(
+                "unknown pattern '{}'. Use: quick, standard, slc, mlc, tlc",
+                other
+            ))
+        }
     };
 
     match opts.test_type.as_str() {
@@ -20,7 +25,8 @@ pub async fn execute(opts: HealthOpts) -> Result<()> {
             println!("Running quick read check on {}...", opts.device);
             let meta = std::fs::metadata(&opts.device)?;
             let size = meta.len();
-            let (bytes_read, errors, speed) = health::quick_read_check(&opts.device, size, block_size)?;
+            let (bytes_read, errors, speed) =
+                health::quick_read_check(&opts.device, size, block_size)?;
             if opts.json {
                 let result = serde_json::json!({
                     "device": opts.device,
@@ -30,9 +36,15 @@ pub async fn execute(opts: HealthOpts) -> Result<()> {
                 });
                 println!("{}", serde_json::to_string_pretty(&result)?);
             } else {
-                println!("Bytes read: {}", humansize::format_size(bytes_read, humansize::BINARY));
+                println!(
+                    "Bytes read: {}",
+                    humansize::format_size(bytes_read, humansize::BINARY)
+                );
                 println!("Errors:     {}", errors);
-                println!("Speed:      {}/s", humansize::format_size(speed as u64, humansize::BINARY));
+                println!(
+                    "Speed:      {}/s",
+                    humansize::format_size(speed as u64, humansize::BINARY)
+                );
                 if errors == 0 {
                     println!("Result:     HEALTHY");
                 } else {

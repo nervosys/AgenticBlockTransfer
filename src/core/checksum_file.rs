@@ -313,7 +313,10 @@ pub async fn fetch_checksum_file(url: &str) -> Result<ChecksumFile> {
 
     let resp = client.get(url).send().await?;
     if !resp.status().is_success() {
-        anyhow::bail!("Failed to fetch checksum file: HTTP {}", resp.status().as_u16());
+        anyhow::bail!(
+            "Failed to fetch checksum file: HTTP {}",
+            resp.status().as_u16()
+        );
     }
 
     let content = resp.text().await?;
@@ -322,10 +325,7 @@ pub async fn fetch_checksum_file(url: &str) -> Result<ChecksumFile> {
 }
 
 /// Verify a file against a checksum entry by computing its hash.
-pub async fn verify_file_checksum(
-    file_path: &Path,
-    expected: &ChecksumEntry,
-) -> Result<bool> {
+pub async fn verify_file_checksum(file_path: &Path, expected: &ChecksumEntry) -> Result<bool> {
     use sha2::{Digest, Sha256, Sha512};
 
     info!(
@@ -397,7 +397,8 @@ mod tests {
 
     #[test]
     fn test_parse_gnu_binary_format() {
-        let content = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 *ubuntu.iso";
+        let content =
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 *ubuntu.iso";
         let cf = parse_checksum_file(content, "SHA256SUMS").unwrap();
         assert_eq!(cf.entries.len(), 1);
         assert!(cf.entries[0].binary);
@@ -457,26 +458,32 @@ mod tests {
                         e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  image-b.iso";
         let cf = parse_checksum_file(content, "SHA256SUMS").unwrap();
         let found = cf.find_hash("image-b.iso").unwrap();
-        assert_eq!(found.hash, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+        assert_eq!(
+            found.hash,
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
     }
 
     #[test]
     fn test_find_hash_case_insensitive() {
-        let content = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  Ubuntu.ISO";
+        let content =
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  Ubuntu.ISO";
         let cf = parse_checksum_file(content, "SHA256SUMS").unwrap();
         assert!(cf.find_hash("ubuntu.iso").is_some());
     }
 
     #[test]
     fn test_find_hash_with_path() {
-        let content = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./images/ubuntu.iso";
+        let content =
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./images/ubuntu.iso";
         let cf = parse_checksum_file(content, "SHA256SUMS").unwrap();
         assert!(cf.find_hash("ubuntu.iso").is_some());
     }
 
     #[test]
     fn test_find_hash_not_found() {
-        let content = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ubuntu.iso";
+        let content =
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ubuntu.iso";
         let cf = parse_checksum_file(content, "SHA256SUMS").unwrap();
         assert!(cf.find_hash("fedora.iso").is_none());
     }
@@ -496,11 +503,26 @@ mod tests {
 
     #[test]
     fn test_algorithm_from_filename() {
-        assert_eq!(HashAlgorithm::from_filename("SHA256SUMS"), Some(HashAlgorithm::Sha256));
-        assert_eq!(HashAlgorithm::from_filename("sha512sums.txt"), Some(HashAlgorithm::Sha512));
-        assert_eq!(HashAlgorithm::from_filename("MD5SUMS"), Some(HashAlgorithm::Md5));
-        assert_eq!(HashAlgorithm::from_filename("image.iso.sha1"), Some(HashAlgorithm::Sha1));
-        assert_eq!(HashAlgorithm::from_filename("file.b3"), Some(HashAlgorithm::Blake3));
+        assert_eq!(
+            HashAlgorithm::from_filename("SHA256SUMS"),
+            Some(HashAlgorithm::Sha256)
+        );
+        assert_eq!(
+            HashAlgorithm::from_filename("sha512sums.txt"),
+            Some(HashAlgorithm::Sha512)
+        );
+        assert_eq!(
+            HashAlgorithm::from_filename("MD5SUMS"),
+            Some(HashAlgorithm::Md5)
+        );
+        assert_eq!(
+            HashAlgorithm::from_filename("image.iso.sha1"),
+            Some(HashAlgorithm::Sha1)
+        );
+        assert_eq!(
+            HashAlgorithm::from_filename("file.b3"),
+            Some(HashAlgorithm::Blake3)
+        );
         assert_eq!(HashAlgorithm::from_filename("random.txt"), None);
     }
 
@@ -518,7 +540,10 @@ mod tests {
         assert_eq!(HashAlgorithm::from_hex_len(32), Some(HashAlgorithm::Md5));
         assert_eq!(HashAlgorithm::from_hex_len(40), Some(HashAlgorithm::Sha1));
         assert_eq!(HashAlgorithm::from_hex_len(64), Some(HashAlgorithm::Sha256));
-        assert_eq!(HashAlgorithm::from_hex_len(128), Some(HashAlgorithm::Sha512));
+        assert_eq!(
+            HashAlgorithm::from_hex_len(128),
+            Some(HashAlgorithm::Sha512)
+        );
         assert_eq!(HashAlgorithm::from_hex_len(99), None);
     }
 

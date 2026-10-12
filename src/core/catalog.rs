@@ -407,7 +407,11 @@ pub async fn fetch_catalog(
 
     let resp = client.get(url).send().await?;
     if !resp.status().is_success() {
-        anyhow::bail!("HTTP {} fetching catalog from {}", resp.status().as_u16(), url);
+        anyhow::bail!(
+            "HTTP {} fetching catalog from {}",
+            resp.status().as_u16(),
+            url
+        );
     }
 
     let body = resp.text().await?;
@@ -521,13 +525,11 @@ fn slug(name: &str) -> String {
 
 /// Well-known provider catalog URLs.
 pub fn default_catalog_urls() -> Vec<(ProviderId, &'static str, &'static str)> {
-    vec![
-        (
-            ProviderId::RaspberryPi,
-            "Raspberry Pi",
-            "https://downloads.raspberrypi.com/os_list_imagingutility_v4.json",
-        ),
-    ]
+    vec![(
+        ProviderId::RaspberryPi,
+        "Raspberry Pi",
+        "https://downloads.raspberrypi.com/os_list_imagingutility_v4.json",
+    )]
 }
 
 #[cfg(test)]
@@ -549,15 +551,27 @@ mod tests {
         assert_eq!(ProviderId::parse("rpi"), ProviderId::RaspberryPi);
         assert_eq!(ProviderId::parse("ubuntu"), ProviderId::Ubuntu);
         assert_eq!(ProviderId::parse("windows"), ProviderId::Microsoft);
-        assert_eq!(ProviderId::parse("custom:arch"), ProviderId::Custom("arch".into()));
-        assert_eq!(ProviderId::parse("nixos"), ProviderId::Custom("nixos".into()));
+        assert_eq!(
+            ProviderId::parse("custom:arch"),
+            ProviderId::Custom("arch".into())
+        );
+        assert_eq!(
+            ProviderId::parse("nixos"),
+            ProviderId::Custom("nixos".into())
+        );
     }
 
     #[test]
     fn test_hardware_tag_display() {
         assert_eq!(HardwareTag::Arch("amd64".into()).to_string(), "arch:amd64");
-        assert_eq!(HardwareTag::Device("rpi4".into()).to_string(), "device:rpi4");
-        assert_eq!(HardwareTag::BootMode("uefi".into()).to_string(), "boot:uefi");
+        assert_eq!(
+            HardwareTag::Device("rpi4".into()).to_string(),
+            "device:rpi4"
+        );
+        assert_eq!(
+            HardwareTag::BootMode("uefi".into()).to_string(),
+            "boot:uefi"
+        );
     }
 
     #[test]

@@ -17,10 +17,19 @@ pub async fn execute(opts: UpdateOpts) -> Result<()> {
         })
         .await?;
         if result.update_available {
-            update::dismiss_update(&result.latest_version, &update::UpdateCheckOpts::default().state_path)?;
-            println!("Dismissed update notification for v{}", result.latest_version);
+            update::dismiss_update(
+                &result.latest_version,
+                &update::UpdateCheckOpts::default().state_path,
+            )?;
+            println!(
+                "Dismissed update notification for v{}",
+                result.latest_version
+            );
         } else {
-            println!("No update to dismiss — abt is up to date (v{})", result.current_version);
+            println!(
+                "No update to dismiss — abt is up to date (v{})",
+                result.current_version
+            );
         }
         return Ok(());
     }
@@ -44,7 +53,10 @@ pub async fn execute(opts: UpdateOpts) -> Result<()> {
 
     if result.update_available {
         println!();
-        println!("📦 Update available: v{} → v{}", result.current_version, result.latest_version);
+        println!(
+            "📦 Update available: v{} → v{}",
+            result.current_version, result.latest_version
+        );
         println!("   Release: {}", result.release_url);
 
         if let Some(ref dl) = result.download_url {

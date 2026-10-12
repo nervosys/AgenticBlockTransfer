@@ -71,8 +71,13 @@ impl fmt::Display for MbrPartition {
         write!(
             f,
             "  {}{}: type=0x{:02X} ({}) start={} sectors={} size={}",
-            boot, self.index, self.partition_type, self.type_name, self.start_lba,
-            self.sector_count, size
+            boot,
+            self.index,
+            self.partition_type,
+            self.type_name,
+            self.start_lba,
+            self.sector_count,
+            size
         )
     }
 }
@@ -141,8 +146,13 @@ impl fmt::Display for GptPartition {
         write!(
             f,
             "  {}: \"{}\" type={} ({}) LBA={}-{} size={}",
-            self.index, self.name, self.type_guid, self.type_name, self.first_lba,
-            self.last_lba, size
+            self.index,
+            self.name,
+            self.type_guid,
+            self.type_name,
+            self.first_lba,
+            self.last_lba,
+            size
         )
     }
 }
@@ -171,7 +181,9 @@ impl fmt::Display for Gpt {
         writeln!(
             f,
             "GPT: disk_guid={} usable_lba={}-{} entries={}",
-            self.disk_guid, self.first_usable_lba, self.last_usable_lba,
+            self.disk_guid,
+            self.first_usable_lba,
+            self.last_usable_lba,
             self.partitions.len()
         )?;
         for p in &self.partitions {
@@ -631,9 +643,7 @@ mod tests {
     #[test]
     fn utf16le_name_parsing() {
         // "EFI" in UTF-16LE followed by null terminator
-        let bytes = [
-            b'E', 0, b'F', 0, b'I', 0, 0, 0,
-        ];
+        let bytes = [b'E', 0, b'F', 0, b'I', 0, 0, 0];
         assert_eq!(parse_utf16le_name(&bytes), "EFI");
     }
 

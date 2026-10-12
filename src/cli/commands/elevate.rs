@@ -45,7 +45,10 @@ pub async fn execute(opts: ElevateOpts) -> Result<()> {
                     "pkexec" => elevate::ElevationMethod::Pkexec,
                     "sudo" => elevate::ElevationMethod::Sudo,
                     "osascript" => elevate::ElevationMethod::Osascript,
-                    other => anyhow::bail!("Unknown elevation method '{}'. Available: uac, pkexec, sudo, osascript", other),
+                    other => anyhow::bail!(
+                        "Unknown elevation method '{}'. Available: uac, pkexec, sudo, osascript",
+                        other
+                    ),
                 };
                 elevate::elevate_with(m)?
             } else {

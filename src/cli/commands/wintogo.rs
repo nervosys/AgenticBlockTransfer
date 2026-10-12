@@ -26,11 +26,19 @@ pub async fn execute(opts: WinToGoOpts) -> Result<()> {
                 );
                 println!(
                     "  Boot Manager:   {}",
-                    if analysis.has_bootmgr { "Found" } else { "Missing" }
+                    if analysis.has_bootmgr {
+                        "Found"
+                    } else {
+                        "Missing"
+                    }
                 );
                 println!(
                     "  EFI Boot:       {}",
-                    if analysis.has_efi_boot { "Found" } else { "Missing" }
+                    if analysis.has_efi_boot {
+                        "Found"
+                    } else {
+                        "Missing"
+                    }
                 );
                 println!(
                     "  Install Image:  {}",
@@ -83,7 +91,9 @@ pub async fn execute(opts: WinToGoOpts) -> Result<()> {
             let scheme = match opts.scheme.as_deref().unwrap_or("gpt") {
                 "gpt" => wintogo::WtgPartitionScheme::Gpt,
                 "mbr" => wintogo::WtgPartitionScheme::Mbr,
-                other => anyhow::bail!("Unknown partition scheme: '{}'. Use 'gpt' or 'mbr'.", other),
+                other => {
+                    anyhow::bail!("Unknown partition scheme: '{}'. Use 'gpt' or 'mbr'.", other)
+                }
             };
 
             let config = wintogo::WtgConfig {
@@ -98,14 +108,15 @@ pub async fn execute(opts: WinToGoOpts) -> Result<()> {
 
             let analysis = wintogo::analyze_iso(Path::new(iso_path))?;
             let drive_size = 64u64 * 1024 * 1024 * 1024; // assume 64GB target
-            let image_size = analysis.install_image_size.unwrap_or(4 * 1024 * 1024 * 1024);
+            let image_size = analysis
+                .install_image_size
+                .unwrap_or(4 * 1024 * 1024 * 1024);
             let plan = wintogo::plan_partitions(&config, drive_size, image_size)?;
 
             if opts.json {
                 println!("{}", serde_json::to_string_pretty(&plan)?);
             } else {
-                let total_human =
-                    humansize::format_size(plan.total_required, humansize::BINARY);
+                let total_human = humansize::format_size(plan.total_required, humansize::BINARY);
                 println!("Windows To Go Partition Plan");
                 println!("  Scheme:        {}", plan.scheme);
                 println!("  ESP:           {} MB", plan.esp_size / (1024 * 1024));
@@ -114,10 +125,7 @@ pub async fn execute(opts: WinToGoOpts) -> Result<()> {
                 }
                 println!("  Windows:       {} MB", plan.windows_size / (1024 * 1024));
                 if plan.recovery_size > 0 {
-                    println!(
-                        "  Recovery:      {} MB",
-                        plan.recovery_size / (1024 * 1024)
-                    );
+                    println!("  Recovery:      {} MB", plan.recovery_size / (1024 * 1024));
                 }
                 println!("  Windows FS:    {}", plan.windows_fs);
                 println!("  Total:         {}", total_human);
@@ -169,10 +177,7 @@ pub async fn execute(opts: WinToGoOpts) -> Result<()> {
         "san-policy" => {
             let policy = wintogo::generate_san_policy();
             if opts.json {
-                println!(
-                    "{}",
-                    serde_json::json!({ "san_policy_xml": policy })
-                );
+                println!("{}", serde_json::json!({ "san_policy_xml": policy }));
             } else {
                 println!("{}", policy);
             }

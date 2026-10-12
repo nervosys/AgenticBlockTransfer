@@ -40,7 +40,9 @@ pub async fn execute(opts: BackupOpts) -> Result<()> {
 
     println!(
         "Backing up {} -> {} ({})",
-        config.source, config.output.display(), config.compression
+        config.source,
+        config.output.display(),
+        config.compression
     );
 
     let result = backup::backup_drive(&config, |progress, total| {

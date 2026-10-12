@@ -72,7 +72,10 @@ pub async fn execute(opts: WriteOpts, output_format: &OutputFormat) -> Result<()
             eprintln!("Dry-run complete: all pre-flight checks passed.");
             std::process::exit(0);
         } else {
-            eprintln!("Dry-run complete: {} blocking error(s) found.", report.errors);
+            eprintln!(
+                "Dry-run complete: {} blocking error(s) found.",
+                report.errors
+            );
             std::process::exit(safety::ExitCode::SafetyCheckFailed.code());
         }
     }
@@ -108,9 +111,7 @@ pub async fn execute(opts: WriteOpts, output_format: &OutputFormat) -> Result<()
     }
 
     // ── Partition table backup ─────────────────────────────────────────────
-    if opts.backup_partition_table
-        || matches!(safety_level, SafetyLevel::High)
-    {
+    if opts.backup_partition_table || matches!(safety_level, SafetyLevel::High) {
         match safety::backup_partition_table(&opts.target).await {
             Ok(path) => {
                 eprintln!("  Partition table backed up: {}", path.display());
@@ -163,7 +164,10 @@ pub async fn execute(opts: WriteOpts, output_format: &OutputFormat) -> Result<()
             pb_clone.set_position(snap.bytes_written);
             pb_clone.set_message(format!("{}", snap.phase));
 
-            if matches!(snap.phase, OperationPhase::Completed | OperationPhase::Failed) {
+            if matches!(
+                snap.phase,
+                OperationPhase::Completed | OperationPhase::Failed
+            ) {
                 break;
             }
             tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;

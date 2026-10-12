@@ -88,16 +88,11 @@ impl PluginRegistry {
     pub fn register(&mut self, plugin: Arc<dyn FormatPlugin>) {
         self.plugins.push(plugin);
         // Sort by priority (descending — higher priority first)
-        self.plugins
-            .sort_by(|a, b| b.priority().cmp(&a.priority()));
+        self.plugins.sort_by(|a, b| b.priority().cmp(&a.priority()));
     }
 
     /// Find the first plugin that can handle the given format + magic bytes.
-    pub fn find_handler(
-        &self,
-        format: ImageFormat,
-        magic: &[u8; 16],
-    ) -> Option<&dyn FormatPlugin> {
+    pub fn find_handler(&self, format: ImageFormat, magic: &[u8; 16]) -> Option<&dyn FormatPlugin> {
         self.plugins
             .iter()
             .find(|p| p.can_handle(format, magic))
@@ -354,10 +349,7 @@ impl FormatPlugin for WimPlugin {
                 format!("WIM v{}.{}", header.version_major, header.version_minor),
             ),
             ("Images".into(), header.image_count.to_string()),
-            (
-                "Compression".into(),
-                header.flags.compression_name().into(),
-            ),
+            ("Compression".into(), header.flags.compression_name().into()),
             ("Bootable".into(), header.is_bootable().to_string()),
             ("GUID".into(), header.guid_string()),
         ])

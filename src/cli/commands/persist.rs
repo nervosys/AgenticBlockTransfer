@@ -71,14 +71,13 @@ pub async fn execute(opts: PersistOpts) -> Result<()> {
             img_path,
             humansize::format_size(img_size, humansize::BINARY)
         );
-        persist::create_persistence_image(
-            std::path::Path::new(img_path),
-            img_size,
-            filesystem,
-        )?;
+        persist::create_persistence_image(std::path::Path::new(img_path), img_size, filesystem)?;
         println!("Done. Persistence image created.");
         if let Some(conf) = persist::generate_persistence_conf(&mode) {
-            println!("Note: This mode requires a persistence.conf with:\n{}", conf);
+            println!(
+                "Note: This mode requires a persistence.conf with:\n{}",
+                conf
+            );
         }
         return Ok(());
     }

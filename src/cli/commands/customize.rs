@@ -2,7 +2,8 @@ use anyhow::{anyhow, Result};
 
 use crate::cli::CustomizeOpts;
 use crate::core::customize::{
-    CustomizationFormat, OsCustomization, SshConfig, UserAccount, WifiConfig, WifiSecurity, LocaleConfig,
+    CustomizationFormat, LocaleConfig, OsCustomization, SshConfig, UserAccount, WifiConfig,
+    WifiSecurity,
 };
 
 pub async fn execute(opts: CustomizeOpts) -> Result<()> {
@@ -69,9 +70,7 @@ pub async fn execute(opts: CustomizeOpts) -> Result<()> {
                 .iter()
                 .filter(|(name, _)| match format {
                     CustomizationFormat::FirstrunScript => name == "firstrun.sh",
-                    CustomizationFormat::CloudInit => {
-                        name == "user-data" || name == "meta-data"
-                    }
+                    CustomizationFormat::CloudInit => name == "user-data" || name == "meta-data",
                     CustomizationFormat::NetworkConfig => name == "network-config",
                 })
                 .collect();

@@ -202,7 +202,10 @@ impl OsCustomization {
                 "sed -i 's/127\\.0\\.1\\.1.*/127.0.1.1\\t{}/' /etc/hosts\n",
                 hostname
             ));
-            script.push_str(&format!("hostnamectl set-hostname '{}' 2>/dev/null || true\n\n", hostname));
+            script.push_str(&format!(
+                "hostnamectl set-hostname '{}' 2>/dev/null || true\n\n",
+                hostname
+            ));
         }
 
         // Users
@@ -223,10 +226,7 @@ impl OsCustomization {
             }
 
             if !user.ssh_authorized_keys.is_empty() {
-                script.push_str(&format!(
-                    "mkdir -p /home/{}/.ssh\n",
-                    user.username
-                ));
+                script.push_str(&format!("mkdir -p /home/{}/.ssh\n", user.username));
                 for key in &user.ssh_authorized_keys {
                     script.push_str(&format!(
                         "echo '{}' >> /home/{}/.ssh/authorized_keys\n",
@@ -246,7 +246,9 @@ impl OsCustomization {
             if ssh.enable {
                 script.push_str("# Enable SSH\n");
                 script.push_str("systemctl enable ssh 2>/dev/null || systemctl enable sshd 2>/dev/null || true\n");
-                script.push_str("systemctl start ssh 2>/dev/null || systemctl start sshd 2>/dev/null || true\n");
+                script.push_str(
+                    "systemctl start ssh 2>/dev/null || systemctl start sshd 2>/dev/null || true\n",
+                );
                 if !ssh.password_auth {
                     script.push_str("sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config\n");
                 }
@@ -416,7 +418,11 @@ impl OsCustomization {
         // SSH
         if let Some(ref ssh) = self.ssh {
             yaml.push_str("ssh_pwauth: ");
-            yaml.push_str(if ssh.password_auth { "true\n" } else { "false\n" });
+            yaml.push_str(if ssh.password_auth {
+                "true\n"
+            } else {
+                "false\n"
+            });
         }
 
         // Timezone / locale
@@ -558,7 +564,9 @@ fn validate_username(username: &str) -> Result<()> {
         return Err(anyhow!("username must be 1-32 characters"));
     }
     if !username.starts_with(|c: char| c.is_ascii_lowercase() || c == '_') {
-        return Err(anyhow!("username must start with a lowercase letter or underscore"));
+        return Err(anyhow!(
+            "username must start with a lowercase letter or underscore"
+        ));
     }
     if !username
         .chars()
@@ -598,9 +606,10 @@ pub fn detect_current_wifi() -> Option<String> {
             .ok()
             .and_then(|o| {
                 if o.status.success() {
-                    String::from_utf8(o.stdout)
-                        .ok()
-                        .and_then(|s| s.strip_prefix("Current Wi-Fi Network: ").map(|n| n.trim().to_string()))
+                    String::from_utf8(o.stdout).ok().and_then(|s| {
+                        s.strip_prefix("Current Wi-Fi Network: ")
+                            .map(|n| n.trim().to_string())
+                    })
                 } else {
                     None
                 }
@@ -827,8 +836,14 @@ mod tests {
 
     #[test]
     fn test_customization_format_display() {
-        assert_eq!(format!("{}", CustomizationFormat::FirstrunScript), "firstrun.sh");
-        assert_eq!(format!("{}", CustomizationFormat::CloudInit), "cloud-init user-data");
+        assert_eq!(
+            format!("{}", CustomizationFormat::FirstrunScript),
+            "firstrun.sh"
+        );
+        assert_eq!(
+            format!("{}", CustomizationFormat::CloudInit),
+            "cloud-init user-data"
+        );
     }
 
     #[test]

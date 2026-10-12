@@ -142,7 +142,13 @@ impl ImageCache {
     }
 
     /// Register a downloaded file in the cache.
-    pub fn insert(&mut self, url: &str, local_path: &Path, sha256: &str, etag: Option<&str>) -> Result<()> {
+    pub fn insert(
+        &mut self,
+        url: &str,
+        local_path: &Path,
+        sha256: &str,
+        etag: Option<&str>,
+    ) -> Result<()> {
         let size = std::fs::metadata(local_path)?.len();
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
@@ -286,7 +292,12 @@ impl ImageCache {
             .as_secs();
 
         let total_size_bytes: u64 = self.manifest.entries.values().map(|e| e.size).sum();
-        let verified_entries = self.manifest.entries.values().filter(|e| e.verified).count();
+        let verified_entries = self
+            .manifest
+            .entries
+            .values()
+            .filter(|e| e.verified)
+            .count();
         let oldest = self
             .manifest
             .entries
@@ -434,8 +445,12 @@ mod tests {
         std::fs::write(tmp.path(), b"data").unwrap();
         let hash = hash_file_sha256(tmp.path()).unwrap();
 
-        cache.insert("https://a.com/1", tmp.path(), &hash, None).unwrap();
-        cache.insert("https://a.com/2", tmp.path(), &hash, None).unwrap();
+        cache
+            .insert("https://a.com/1", tmp.path(), &hash, None)
+            .unwrap();
+        cache
+            .insert("https://a.com/2", tmp.path(), &hash, None)
+            .unwrap();
 
         cache.clear().unwrap();
         assert_eq!(cache.stats().total_entries, 0);
@@ -490,8 +505,14 @@ mod tests {
     #[test]
     fn test_eviction_policy_display() {
         assert_eq!(format!("{}", EvictionPolicy::MaxAge(3600)), "max-age=3600s");
-        assert_eq!(format!("{}", EvictionPolicy::MaxEntries(10)), "max-entries=10");
-        assert_eq!(format!("{}", EvictionPolicy::MaxSize(1024)), "max-size=1024B");
+        assert_eq!(
+            format!("{}", EvictionPolicy::MaxEntries(10)),
+            "max-entries=10"
+        );
+        assert_eq!(
+            format!("{}", EvictionPolicy::MaxSize(1024)),
+            "max-size=1024B"
+        );
     }
 
     #[test]

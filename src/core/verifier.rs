@@ -26,10 +26,8 @@ pub fn verify_by_hash(
     info!("Hashing target: {} ({} bytes)", target, source_size);
 
     let target_file = std::fs::File::open(target)?;
-    let mut target_reader = std::io::BufReader::with_capacity(
-        4 * 1024 * 1024,
-        target_file.take(source_size),
-    );
+    let mut target_reader =
+        std::io::BufReader::with_capacity(4 * 1024 * 1024, target_file.take(source_size));
     let tgt_hash = hasher::hash_reader(&mut target_reader, algorithm, progress)?;
     info!("Target {}: {}", algorithm, tgt_hash);
 

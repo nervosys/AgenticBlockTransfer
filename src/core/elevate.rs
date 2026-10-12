@@ -280,7 +280,10 @@ pub fn elevate() -> Result<ElevationResult> {
         _ => Ok(ElevationResult {
             success: false,
             method,
-            error: Some(format!("Elevation method {} not supported on this platform", method)),
+            error: Some(format!(
+                "Elevation method {} not supported on this platform",
+                method
+            )),
             should_exit: false,
         }),
     }
@@ -345,7 +348,10 @@ fn elevate_uac() -> Result<ElevationResult> {
         error: if status.success() {
             None
         } else {
-            Some(format!("UAC elevation failed with exit code {:?}", status.code()))
+            Some(format!(
+                "UAC elevation failed with exit code {:?}",
+                status.code()
+            ))
         },
         should_exit: status.success(),
     })
@@ -434,7 +440,10 @@ fn elevate_osascript() -> Result<ElevationResult> {
         error: if status.success() {
             None
         } else {
-            Some(format!("osascript failed with exit code {:?}", status.code()))
+            Some(format!(
+                "osascript failed with exit code {:?}",
+                status.code()
+            ))
         },
         should_exit: status.success(),
     })

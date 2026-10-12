@@ -21,7 +21,10 @@ pub async fn execute(opts: UsbInfoOpts) -> Result<()> {
     println!("  Speed:      {}", info.current_speed);
 
     if info.speed_degraded {
-        println!("  Capability: {} (DEGRADED)", info.device_capability.short_name());
+        println!(
+            "  Capability: {} (DEGRADED)",
+            info.device_capability.short_name()
+        );
     }
 
     if let Some(ref serial) = info.serial {
@@ -37,7 +40,9 @@ pub async fn execute(opts: UsbInfoOpts) -> Result<()> {
     if let Some(warning) = info.speed_warning() {
         println!();
         println!("⚠ {}", warning);
-    } else if info.current_speed.is_slow_for_imaging() && info.current_speed != usb_speed::UsbSpeed::Unknown {
+    } else if info.current_speed.is_slow_for_imaging()
+        && info.current_speed != usb_speed::UsbSpeed::Unknown
+    {
         println!();
         println!(
             "⚠ Device is connected at {} — writes may be slow for large images",

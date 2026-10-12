@@ -303,7 +303,9 @@ impl WriteWatchdog {
 
         warn!(
             "Watchdog: stall #{} detected ({} severity) at {:.1}% — no progress for check cycle",
-            self.stall_count, severity, self.state.progress_pct()
+            self.stall_count,
+            severity,
+            self.state.progress_pct()
         );
 
         // Determine action from escalation chain.
@@ -313,7 +315,11 @@ impl WriteWatchdog {
             a
         } else {
             // Past the end of the chain — use the last action.
-            *self.config.escalation.last().unwrap_or(&RecoveryAction::Cancel)
+            *self
+                .config
+                .escalation
+                .last()
+                .unwrap_or(&RecoveryAction::Cancel)
         };
 
         // Record the stall event.
@@ -331,7 +337,10 @@ impl WriteWatchdog {
 
         // Check max stalls.
         if self.config.max_stalls > 0 && self.stall_count >= self.config.max_stalls {
-            warn!("Watchdog: max stall count ({}) reached — cancelling", self.config.max_stalls);
+            warn!(
+                "Watchdog: max stall count ({}) reached — cancelling",
+                self.config.max_stalls
+            );
             self.state.cancel();
             return Some(RecoveryAction::Cancel);
         }
@@ -419,9 +428,15 @@ pub struct WatchdogSummary {
 /// Format a watchdog summary as a human-readable string.
 pub fn format_summary(summary: &WatchdogSummary) -> String {
     let mut lines = vec![];
-    lines.push(format!("Watchdog Summary ({:.1}s elapsed)", summary.elapsed_secs));
+    lines.push(format!(
+        "Watchdog Summary ({:.1}s elapsed)",
+        summary.elapsed_secs
+    ));
     lines.push(format!("  Stalls detected: {}", summary.stall_count));
-    lines.push(format!("  Final queue depth: {}", summary.final_queue_depth));
+    lines.push(format!(
+        "  Final queue depth: {}",
+        summary.final_queue_depth
+    ));
     lines.push(format!("  Used sync I/O: {}", summary.used_sync_io));
     lines.push(format!("  Was cancelled: {}", summary.was_cancelled));
 
@@ -457,7 +472,10 @@ mod tests {
     #[test]
     fn test_recovery_action_display() {
         assert_eq!(RecoveryAction::Warn.to_string(), "Warn");
-        assert_eq!(RecoveryAction::ReduceQueueDepth.to_string(), "ReduceQueueDepth");
+        assert_eq!(
+            RecoveryAction::ReduceQueueDepth.to_string(),
+            "ReduceQueueDepth"
+        );
         assert_eq!(RecoveryAction::FallbackToSync.to_string(), "FallbackToSync");
         assert_eq!(RecoveryAction::Cancel.to_string(), "Cancel");
     }
@@ -711,7 +729,7 @@ mod tests {
         // Progress → reset escalation
         state.update_progress(100);
         wd.check(0); // last_bytes=0, current=100 → progress
-        // Next stall should restart from Warn (escalation_index reset)
+                     // Next stall should restart from Warn (escalation_index reset)
 
         state.update_progress(100); // no more progress
         let a = wd.check(100);

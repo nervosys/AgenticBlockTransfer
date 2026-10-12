@@ -100,16 +100,13 @@ impl MirrorList {
     /// Get the best available mirror URL (lowest latency among non-failed, or
     /// lowest priority if latency not measured).
     pub fn best_mirror(&self) -> Option<&Mirror> {
-        self.mirrors
-            .iter()
-            .filter(|m| !m.failed)
-            .min_by_key(|m| {
-                if m.latency_ms > 0 {
-                    m.latency_ms
-                } else {
-                    m.priority as u64 * 1000
-                }
-            })
+        self.mirrors.iter().filter(|m| !m.failed).min_by_key(|m| {
+            if m.latency_ms > 0 {
+                m.latency_ms
+            } else {
+                m.priority as u64 * 1000
+            }
+        })
     }
 
     /// Mark a mirror as failed (it will be skipped on subsequent calls to `best_mirror`).
@@ -360,7 +357,12 @@ pub async fn download_with_failover(
         .collect();
 
     for (mirror_url, mirror_name) in &candidates {
-        let url = format!("{}{}{}", mirror_url.trim_end_matches('/'), "/", relative_path.trim_start_matches('/'));
+        let url = format!(
+            "{}{}{}",
+            mirror_url.trim_end_matches('/'),
+            "/",
+            relative_path.trim_start_matches('/')
+        );
         info!("Trying mirror: {} ({})", mirror_name, url);
 
         let opts = ResumeDownloadOpts {
@@ -412,20 +414,16 @@ mod tests {
 
     #[test]
     fn test_best_mirror_by_priority() {
-        let list = MirrorList::from_urls(&[
-            "https://slow.example.com/",
-            "https://fast.example.com/",
-        ]);
+        let list =
+            MirrorList::from_urls(&["https://slow.example.com/", "https://fast.example.com/"]);
         let best = list.best_mirror().unwrap();
         assert_eq!(best.url, "https://slow.example.com/"); // Priority 1 wins
     }
 
     #[test]
     fn test_best_mirror_by_latency() {
-        let mut list = MirrorList::from_urls(&[
-            "https://slow.example.com/",
-            "https://fast.example.com/",
-        ]);
+        let mut list =
+            MirrorList::from_urls(&["https://slow.example.com/", "https://fast.example.com/"]);
         list.mirrors[0].latency_ms = 500;
         list.mirrors[1].latency_ms = 50;
         let best = list.best_mirror().unwrap();
@@ -434,10 +432,7 @@ mod tests {
 
     #[test]
     fn test_mark_failed() {
-        let mut list = MirrorList::from_urls(&[
-            "https://a.example.com/",
-            "https://b.example.com/",
-        ]);
+        let mut list = MirrorList::from_urls(&["https://a.example.com/", "https://b.example.com/"]);
         assert_eq!(list.available_count(), 2);
         list.mark_failed("https://a.example.com/");
         assert_eq!(list.available_count(), 1);
@@ -447,10 +442,7 @@ mod tests {
 
     #[test]
     fn test_reset_failures() {
-        let mut list = MirrorList::from_urls(&[
-            "https://a.example.com/",
-            "https://b.example.com/",
-        ]);
+        let mut list = MirrorList::from_urls(&["https://a.example.com/", "https://b.example.com/"]);
         list.mark_failed("https://a.example.com/");
         list.mark_failed("https://b.example.com/");
         assert_eq!(list.available_count(), 0);

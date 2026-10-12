@@ -6,7 +6,7 @@
 //!   - Comparing abt throughput against dd on the same hardware
 //!   - Validating that I/O optimizations (O_DIRECT, sparse, io_uring) help
 
-use std::io::{Read, Write, Seek, SeekFrom};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
@@ -116,7 +116,12 @@ pub fn run_benchmark(config: &BenchConfig) -> Result<BenchReport> {
 
     for &block_size in &block_sizes {
         if config.bench_write {
-            let m = bench_write(&config.target, block_size, config.test_size, config.iterations)?;
+            let m = bench_write(
+                &config.target,
+                block_size,
+                config.test_size,
+                config.iterations,
+            )?;
             info!(
                 "  Write block_size={:>8}  throughput={:.1} MiB/s  iops={:.0}",
                 humanize_block_size(block_size),
@@ -131,7 +136,12 @@ pub fn run_benchmark(config: &BenchConfig) -> Result<BenchReport> {
         }
 
         if config.bench_read {
-            let m = bench_read(&config.target, block_size, config.test_size, config.iterations)?;
+            let m = bench_read(
+                &config.target,
+                block_size,
+                config.test_size,
+                config.iterations,
+            )?;
             info!(
                 "  Read  block_size={:>8}  throughput={:.1} MiB/s  iops={:.0}",
                 humanize_block_size(block_size),
@@ -332,8 +342,14 @@ pub fn format_report(report: &BenchReport) -> String {
         "Recommended block size: {}\n",
         humanize_block_size(report.recommended_block_size)
     ));
-    out.push_str(&format!("Peak write: {:.1} MiB/s\n", report.peak_write_mib_s));
-    out.push_str(&format!("Peak read:  {:.1} MiB/s\n", report.peak_read_mib_s));
+    out.push_str(&format!(
+        "Peak write: {:.1} MiB/s\n",
+        report.peak_write_mib_s
+    ));
+    out.push_str(&format!(
+        "Peak read:  {:.1} MiB/s\n",
+        report.peak_read_mib_s
+    ));
 
     out
 }
@@ -373,13 +389,7 @@ mod tests {
     #[test]
     fn test_bench_read() {
         let tmp = NamedTempFile::new().unwrap();
-        let result = bench_read(
-            tmp.path().to_str().unwrap(),
-            4096,
-            32 * 1024,
-            1,
-        )
-        .unwrap();
+        let result = bench_read(tmp.path().to_str().unwrap(), 4096, 32 * 1024, 1).unwrap();
 
         assert_eq!(result.block_size, 4096);
         assert_eq!(result.operation, "read");

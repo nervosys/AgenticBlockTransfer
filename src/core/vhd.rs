@@ -120,8 +120,7 @@ impl VhdFooter {
         let sectors_per_track = r.read_u8()?;
 
         let disk_type_raw = r.read_u32::<BigEndian>()?;
-        let disk_type = VhdDiskType::from_u32(disk_type_raw)
-            .unwrap_or(VhdDiskType::None);
+        let disk_type = VhdDiskType::from_u32(disk_type_raw).unwrap_or(VhdDiskType::None);
 
         let checksum = r.read_u32::<BigEndian>()?;
 
@@ -544,7 +543,7 @@ mod tests {
         c.write_u32::<BigEndian>(0x5769326B).unwrap(); // creator_host_os (Wi2k = Windows)
         c.write_u64::<BigEndian>(virtual_size).unwrap(); // original_size
         c.write_u64::<BigEndian>(virtual_size).unwrap(); // current_size
-        // geometry: 10 cylinders, 16 heads, 63 sectors
+                                                         // geometry: 10 cylinders, 16 heads, 63 sectors
         c.write_u16::<BigEndian>(10).unwrap();
         c.write_u8(16).unwrap();
         c.write_u8(63).unwrap();

@@ -103,8 +103,8 @@ fn transfer_splice(
         .with_context(|| format!("Failed to open target {}", target.display()))?;
 
     // Create pipe for splice intermediary
-    let (pipe_read, pipe_write) = nix::unistd::pipe()
-        .context("Failed to create pipe for splice")?;
+    let (pipe_read, pipe_write) =
+        nix::unistd::pipe().context("Failed to create pipe for splice")?;
 
     let source_fd = source_file.as_raw_fd();
     let target_fd = target_file.as_raw_fd();
@@ -113,7 +113,11 @@ fn transfer_splice(
     let max_bytes = byte_limit.unwrap_or(u64::MAX);
     let mut total: u64 = 0;
 
-    info!("Zero-copy splice: {} → {}", source.display(), target.display());
+    info!(
+        "Zero-copy splice: {} → {}",
+        source.display(),
+        target.display()
+    );
 
     loop {
         if progress.is_cancelled() {
@@ -206,7 +210,11 @@ fn transfer_sendfile(
     let mut total: u64 = 0;
     let chunk_size: usize = 4 * 1024 * 1024; // 4 MiB per sendfile call
 
-    info!("Zero-copy sendfile: {} → {}", source.display(), target.display());
+    info!(
+        "Zero-copy sendfile: {} → {}",
+        source.display(),
+        target.display()
+    );
 
     loop {
         if progress.is_cancelled() {
@@ -226,7 +234,14 @@ fn transfer_sendfile(
             // SAFETY: sendfile() is called with valid file descriptors obtained from
             // std::fs::File. Error is checked immediately. No memory aliasing.
             let rc = unsafe {
-                libc::sendfile(source_fd, target_fd, offset as libc::off_t, &mut len, std::ptr::null_mut(), 0)
+                libc::sendfile(
+                    source_fd,
+                    target_fd,
+                    offset as libc::off_t,
+                    &mut len,
+                    std::ptr::null_mut(),
+                    0,
+                )
             };
             if rc == -1 && len == 0 {
                 let err = std::io::Error::last_os_error();
@@ -250,7 +265,15 @@ fn transfer_sendfile(
             // SAFETY: sendfile() is called with valid file descriptors obtained from
             // std::fs::File. Error and byte count are checked immediately. No memory aliasing.
             let rc = unsafe {
-                libc::sendfile(source_fd, target_fd, offset as libc::off_t, count, std::ptr::null_mut(), &mut sbytes, 0)
+                libc::sendfile(
+                    source_fd,
+                    target_fd,
+                    offset as libc::off_t,
+                    count,
+                    std::ptr::null_mut(),
+                    &mut sbytes,
+                    0,
+                )
             };
             if rc == -1 && sbytes == 0 {
                 break;
@@ -379,8 +402,7 @@ mod tests {
         let target = NamedTempFile::new().unwrap();
         let progress = Progress::new(4096);
 
-        let result =
-            transfer(source.path(), target.path(), 1024, Some(4096), &progress).unwrap();
+        let result = transfer(source.path(), target.path(), 1024, Some(4096), &progress).unwrap();
         assert_eq!(result.bytes_transferred, 4096);
 
         let written = std::fs::read(target.path()).unwrap();

@@ -15,7 +15,7 @@ use anyhow::{bail, Result};
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use std::io::Read;
-use std::path::{PathBuf};
+use std::path::PathBuf;
 
 /// Checkpoint data persisted between interrupted sessions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -66,7 +66,13 @@ impl WriteCheckpoint {
     pub fn checkpoint_path(target: &str) -> PathBuf {
         let sanitized: String = target
             .chars()
-            .map(|c| if c.is_alphanumeric() || c == '.' || c == '-' { c } else { '_' })
+            .map(|c| {
+                if c.is_alphanumeric() || c == '.' || c == '-' {
+                    c
+                } else {
+                    '_'
+                }
+            })
             .collect();
         std::env::temp_dir().join(format!("abt-checkpoint-{}.json", sanitized))
     }
@@ -76,7 +82,11 @@ impl WriteCheckpoint {
         let path = Self::checkpoint_path(&self.target);
         let json = serde_json::to_string_pretty(self)?;
         std::fs::write(&path, &json)?;
-        info!("Checkpoint saved: {} ({} bytes written)", path.display(), self.bytes_written);
+        info!(
+            "Checkpoint saved: {} ({} bytes written)",
+            path.display(),
+            self.bytes_written
+        );
         Ok(path)
     }
 
@@ -197,11 +207,7 @@ pub struct ResumeInfo {
 
 /// Attempt to load and validate a resume checkpoint for a write operation.
 /// Returns None if no valid checkpoint exists.
-pub fn try_resume(
-    source: &str,
-    target: &str,
-    algorithm: &str,
-) -> Result<Option<ResumeInfo>> {
+pub fn try_resume(source: &str, target: &str, algorithm: &str) -> Result<Option<ResumeInfo>> {
     let checkpoint = match WriteCheckpoint::load(target)? {
         Some(cp) => cp,
         None => return Ok(None),

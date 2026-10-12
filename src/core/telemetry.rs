@@ -18,10 +18,10 @@ use anyhow::Result;
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant, SystemTime};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::sync::{OnceLock, RwLock};
+use std::time::{Duration, Instant, SystemTime};
 
 /// Which phase is currently the bottleneck.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -251,7 +251,8 @@ impl TelemetrySession {
 
     /// Record bytes processed in a phase.
     pub fn record_phase(&mut self, phase: &str, bytes: u64, elapsed_secs: f64) {
-        let entry = self.phases
+        let entry = self
+            .phases
             .entry(phase.to_string())
             .or_insert_with(|| PhaseThroughput::new(phase));
         entry.record(bytes, elapsed_secs);
@@ -282,7 +283,10 @@ impl TelemetrySession {
         if state != self.bottleneck {
             // Record duration of previous state.
             let elapsed = self.bottleneck_since.elapsed().as_secs_f64();
-            *self.bottleneck_durations.entry(self.bottleneck).or_insert(0.0) += elapsed;
+            *self
+                .bottleneck_durations
+                .entry(self.bottleneck)
+                .or_insert(0.0) += elapsed;
 
             info!("Bottleneck changed: {} → {}", self.bottleneck, state);
             self.record_event(
@@ -381,7 +385,10 @@ impl TelemetrySession {
     pub fn finalize(&mut self, success: bool, error: Option<&str>) -> TelemetryReport {
         // Record final bottleneck duration.
         let elapsed = self.bottleneck_since.elapsed().as_secs_f64();
-        *self.bottleneck_durations.entry(self.bottleneck).or_insert(0.0) += elapsed;
+        *self
+            .bottleneck_durations
+            .entry(self.bottleneck)
+            .or_insert(0.0) += elapsed;
 
         let total_elapsed = self.start.elapsed().as_secs_f64();
         let overall_bps = if total_elapsed > 0.0 {
@@ -390,7 +397,8 @@ impl TelemetrySession {
             0.0
         };
 
-        let bottleneck_durations: HashMap<String, f64> = self.bottleneck_durations
+        let bottleneck_durations: HashMap<String, f64> = self
+            .bottleneck_durations
             .iter()
             .map(|(k, v)| (k.to_string(), *v))
             .collect();
@@ -517,7 +525,10 @@ pub fn summarize_report(report: &TelemetryReport) -> String {
         format_throughput(report.overall_bps)
     ));
     lines.push(format!("Bottleneck: {}", report.bottleneck));
-    lines.push(format!("Result: {}", if report.success { "SUCCESS" } else { "FAILED" }));
+    lines.push(format!(
+        "Result: {}",
+        if report.success { "SUCCESS" } else { "FAILED" }
+    ));
 
     if let Some(ref err) = report.error {
         lines.push(format!("Error: {}", err));
@@ -564,7 +575,6 @@ fn format_bytes_human(bytes: u64) -> String {
 // ──────────────────────────────────────────────
 // Tests
 // ──────────────────────────────────────────────
-
 
 // ──────────────────────────────────────────────
 // Remote usage telemetry — opt-in AWS CloudWatch
@@ -794,8 +804,9 @@ fn build_cloudwatch_payload(events: &[UsageTelemetryEvent]) -> String {
 
 /// Sign and send metrics to AWS CloudWatch using SigV4.
 async fn send_cloudwatch_metrics(events: &[UsageTelemetryEvent]) -> Result<()> {
-    let (access_key, secret_key) = get_aws_credentials()
-        .ok_or_else(|| anyhow::anyhow!("AWS credentials not set (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY)"))?;
+    let (access_key, secret_key) = get_aws_credentials().ok_or_else(|| {
+        anyhow::anyhow!("AWS credentials not set (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY)")
+    })?;
 
     let payload = build_cloudwatch_payload(events);
     let now = chrono::Utc::now();
@@ -815,14 +826,22 @@ async fn send_cloudwatch_metrics(events: &[UsageTelemetryEvent]) -> Result<()> {
     );
 
     // String to sign
-    let credential_scope = format!("{}/{}/{}/aws4_request", date_stamp, CLOUDWATCH_REGION, CLOUDWATCH_SERVICE);
+    let credential_scope = format!(
+        "{}/{}/{}/aws4_request",
+        date_stamp, CLOUDWATCH_REGION, CLOUDWATCH_SERVICE
+    );
     let string_to_sign = format!(
         "AWS4-HMAC-SHA256\n{}\n{}\n{}",
-        amz_date, credential_scope, sha256_hex(canonical_request.as_bytes())
+        amz_date,
+        credential_scope,
+        sha256_hex(canonical_request.as_bytes())
     );
 
     // Signing key
-    let k_date = hmac_sha256(format!("AWS4{}", secret_key).as_bytes(), date_stamp.as_bytes());
+    let k_date = hmac_sha256(
+        format!("AWS4{}", secret_key).as_bytes(),
+        date_stamp.as_bytes(),
+    );
     let k_region = hmac_sha256(&k_date, CLOUDWATCH_REGION.as_bytes());
     let k_service = hmac_sha256(&k_region, CLOUDWATCH_SERVICE.as_bytes());
     let k_signing = hmac_sha256(&k_service, b"aws4_request");
@@ -850,7 +869,11 @@ async fn send_cloudwatch_metrics(events: &[UsageTelemetryEvent]) -> Result<()> {
         let status = resp.status();
         let body = resp.text().await.unwrap_or_default();
         warn!("CloudWatch push failed ({}): {}", status, body);
-        Err(anyhow::anyhow!("CloudWatch push failed: {} {}", status, body))
+        Err(anyhow::anyhow!(
+            "CloudWatch push failed: {} {}",
+            status,
+            body
+        ))
     }
 }
 
@@ -864,7 +887,9 @@ pub async fn flush_to_cloudwatch() -> Result<()> {
     }
 
     let events = {
-        let mut store = events_store().write().map_err(|e| anyhow::anyhow!("lock: {}", e))?;
+        let mut store = events_store()
+            .write()
+            .map_err(|e| anyhow::anyhow!("lock: {}", e))?;
         std::mem::take(&mut *store)
     };
 
@@ -940,7 +965,9 @@ mod tests {
         assert!(EventType::QueueDepthReduction { from: 8, to: 4 }
             .to_string()
             .contains("8"));
-        assert!(EventType::Custom("test".into()).to_string().contains("test"));
+        assert!(EventType::Custom("test".into())
+            .to_string()
+            .contains("test"));
     }
 
     #[test]
@@ -1185,7 +1212,11 @@ mod tests {
         usage_disable();
         assert!(!usage_is_enabled());
         // Restore
-        if was_enabled { usage_enable(); } else { usage_disable(); }
+        if was_enabled {
+            usage_enable();
+        } else {
+            usage_disable();
+        }
     }
 
     #[test]
@@ -1194,7 +1225,9 @@ mod tests {
         usage_disable();
         let status = usage_status();
         assert!(status.contains("DISABLED"));
-        if was_enabled { usage_enable(); }
+        if was_enabled {
+            usage_enable();
+        }
     }
 
     #[test]
@@ -1205,8 +1238,13 @@ mod tests {
         record_usage("disabled_test_event", HashMap::new(), 1.0);
         let after = usage_event_count();
         // When disabled, record_usage should be a no-op.
-        assert_eq!(before, after, "event count should not change when telemetry is disabled");
-        if was_enabled { usage_enable(); }
+        assert_eq!(
+            before, after,
+            "event count should not change when telemetry is disabled"
+        );
+        if was_enabled {
+            usage_enable();
+        }
     }
     #[test]
     fn test_record_usage_when_enabled() {
@@ -1218,7 +1256,9 @@ mod tests {
         let events = usage_events();
         assert!(events.iter().any(|e| e.event_name == "test_event"));
         reset_usage();
-        if !was_enabled { usage_disable(); }
+        if !was_enabled {
+            usage_disable();
+        }
     }
 
     #[test]
@@ -1233,7 +1273,9 @@ mod tests {
                 && e.dimensions.get("command").map(|s| s.as_str()) == Some("write")
         }));
         reset_usage();
-        if !was_enabled { usage_disable(); }
+        if !was_enabled {
+            usage_disable();
+        }
     }
 
     #[test]
@@ -1248,7 +1290,9 @@ mod tests {
                 && e.dimensions.get("error_type").map(|s| s.as_str()) == Some("io")
         }));
         reset_usage();
-        if !was_enabled { usage_disable(); }
+        if !was_enabled {
+            usage_disable();
+        }
     }
 
     #[test]
@@ -1290,7 +1334,10 @@ mod tests {
     fn test_sha256_hex_known_value() {
         // SHA-256 of empty string
         let hash = sha256_hex(b"");
-        assert_eq!(hash, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+        assert_eq!(
+            hash,
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
     }
 
     #[test]
@@ -1300,7 +1347,9 @@ mod tests {
         record_usage("test", HashMap::new(), 1.0);
         reset_usage();
         assert_eq!(usage_event_count(), 0);
-        if !was_enabled { usage_disable(); }
+        if !was_enabled {
+            usage_disable();
+        }
     }
 
     #[test]

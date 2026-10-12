@@ -53,13 +53,9 @@ async fn validated_get(client: &reqwest::Client, url: &str) -> Result<reqwest::R
 /// Progress is reported through the shared `Progress` handle.
 /// Cancellation (via `progress.cancel()`) aborts the download and
 /// removes the partial temp file.
-pub async fn download_streaming(
-    url: &str,
-    progress: &Progress,
-) -> Result<PathBuf> {
+pub async fn download_streaming(url: &str, progress: &Progress) -> Result<PathBuf> {
     // SC.L2-3.13.8 / SP 800-52: Validate URL transport security
-    super::compliance::validate_download_url(url)
-        .map_err(|e| anyhow::anyhow!(e))?;
+    super::compliance::validate_download_url(url).map_err(|e| anyhow::anyhow!(e))?;
 
     info!("Streaming download: {}", url);
 

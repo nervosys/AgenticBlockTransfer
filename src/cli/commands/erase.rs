@@ -4,7 +4,7 @@ use anyhow::Result;
 use log::info;
 
 use crate::cli::EraseOpts;
-use crate::core::erase::{EraseConfig, EraseMethod, erase_device};
+use crate::core::erase::{erase_device, EraseConfig, EraseMethod};
 use crate::core::progress::Progress;
 
 pub async fn execute(opts: EraseOpts) -> Result<()> {

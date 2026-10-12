@@ -55,9 +55,9 @@ impl DiscType {
     /// Typical maximum capacity in bytes.
     pub fn typical_max_bytes(&self) -> u64 {
         match self {
-            Self::CdRom => 737_280_000,         // 703 MiB
-            Self::Dvd => 4_707_319_808,          // 4.38 GiB (single-layer)
-            Self::BluRay => 25_025_314_816,      // 23.3 GiB (single-layer)
+            Self::CdRom => 737_280_000,     // 703 MiB
+            Self::Dvd => 4_707_319_808,     // 4.38 GiB (single-layer)
+            Self::BluRay => 25_025_314_816, // 23.3 GiB (single-layer)
             Self::Unknown => 0,
         }
     }
@@ -128,13 +128,25 @@ impl std::fmt::Display for DiscInfo {
         writeln!(f, "  Device:    {}", self.device_path)?;
         writeln!(f, "  Type:      {}", self.disc_type)?;
         writeln!(f, "  Sectors:   {}", self.sector_count)?;
-        writeln!(f, "  Size:      {} MiB ({} bytes)",
-            self.total_size / (1024 * 1024), self.total_size)?;
+        writeln!(
+            f,
+            "  Size:      {} MiB ({} bytes)",
+            self.total_size / (1024 * 1024),
+            self.total_size
+        )?;
         if let Some(ref label) = self.volume_label {
             writeln!(f, "  Label:     {}", label)?;
         }
         writeln!(f, "  Blank:     {}", self.is_blank)?;
-        write!(f, "  Sessions:  {}", if self.is_multi_session { "multi" } else { "single" })
+        write!(
+            f,
+            "  Sessions:  {}",
+            if self.is_multi_session {
+                "multi"
+            } else {
+                "single"
+            }
+        )
     }
 }
 
@@ -239,12 +251,19 @@ impl std::fmt::Display for ReadResult {
         writeln!(f, "  Sectors:     {}", self.sectors_read)?;
         writeln!(f, "  Errors:      {}", self.error_sectors)?;
         writeln!(f, "  Duration:    {:.1}s", self.duration_seconds)?;
-        writeln!(f, "  Speed:       {} MiB/s",
-            self.avg_speed_bps / (1024 * 1024))?;
+        writeln!(
+            f,
+            "  Speed:       {} MiB/s",
+            self.avg_speed_bps / (1024 * 1024)
+        )?;
         if let Some(ref hash) = self.sha256 {
             writeln!(f, "  SHA-256:     {}", hash)?;
         }
-        write!(f, "  Status:      {}", if self.success { "OK" } else { "FAILED" })
+        write!(
+            f,
+            "  Status:      {}",
+            if self.success { "OK" } else { "FAILED" }
+        )
     }
 }
 
@@ -315,8 +334,8 @@ pub fn detect_drives() -> Result<Vec<String>> {
 /// Get disc information from an optical drive.
 pub fn get_disc_info(device: &str) -> Result<DiscInfo> {
     // Try to open and read the ISO 9660 PVD to get disc info
-    let mut file = std::fs::File::open(device)
-        .context(format!("Failed to open optical drive: {}", device))?;
+    let mut file =
+        std::fs::File::open(device).context(format!("Failed to open optical drive: {}", device))?;
 
     // Read PVD at sector 16 (offset 32768)
     let pvd_offset = 16 * SECTOR_SIZE;
@@ -324,8 +343,7 @@ pub fn get_disc_info(device: &str) -> Result<DiscInfo> {
         .context("Failed to seek to PVD")?;
 
     let mut pvd = [0u8; SECTOR_SIZE as usize];
-    file.read_exact(&mut pvd)
-        .context("Failed to read PVD")?;
+    file.read_exact(&mut pvd).context("Failed to read PVD")?;
 
     // Verify ISO 9660 magic
     if pvd[0] != PVD_TYPE || &pvd[1..6] != ISO_MAGIC {
@@ -333,16 +351,18 @@ pub fn get_disc_info(device: &str) -> Result<DiscInfo> {
     }
 
     // Volume label at offset 40-71 (32 bytes, space-padded)
-    let label = String::from_utf8_lossy(&pvd[40..72])
-        .trim()
-        .to_string();
+    let label = String::from_utf8_lossy(&pvd[40..72]).trim().to_string();
 
     // Volume size in sectors (at offset 80, both-endian — use LE)
     let vol_sectors = u32::from_le_bytes([pvd[80], pvd[81], pvd[82], pvd[83]]) as u64;
 
     // Logical block size (at offset 128, both-endian — use LE)
     let block_size = u16::from_le_bytes([pvd[128], pvd[129]]) as u64;
-    let effective_sector_size = if block_size > 0 { block_size } else { SECTOR_SIZE };
+    let effective_sector_size = if block_size > 0 {
+        block_size
+    } else {
+        SECTOR_SIZE
+    };
 
     let total_size = vol_sectors * effective_sector_size;
 
@@ -364,8 +384,7 @@ pub fn read_disc(config: &ReadConfig, progress_cb: Option<ProgressCallback>) -> 
         .context(format!("Failed to open optical drive: {}", config.device))?;
 
     // Get disc size from ISO PVD
-    let disc_info = get_disc_info(&config.device)
-        .context("Failed to read disc information")?;
+    let disc_info = get_disc_info(&config.device).context("Failed to read disc information")?;
 
     let total_bytes = disc_info.total_size;
     let total_sectors = disc_info.sector_count;
@@ -379,15 +398,21 @@ pub fn read_disc(config: &ReadConfig, progress_cb: Option<ProgressCallback>) -> 
     }
 
     // Create output file
-    let mut output = std::fs::File::create(&config.output)
-        .context(format!("Failed to create output file: {}", config.output.display()))?;
+    let mut output = std::fs::File::create(&config.output).context(format!(
+        "Failed to create output file: {}",
+        config.output.display()
+    ))?;
 
     let buffer_size = config.buffer_sectors * SECTOR_SIZE as usize;
     let mut buffer = vec![0u8; buffer_size];
     let mut bytes_read: u64 = 0;
     let mut sectors_read: u64 = 0;
     let mut error_count: u32 = 0;
-    let mut hasher = if config.verify { Some(Sha256::new()) } else { None };
+    let mut hasher = if config.verify {
+        Some(Sha256::new())
+    } else {
+        None
+    };
 
     let start = Instant::now();
     source.seek(SeekFrom::Start(0))?;
@@ -427,7 +452,8 @@ pub fn read_disc(config: &ReadConfig, progress_cb: Option<ProgressCallback>) -> 
             break;
         }
 
-        output.write_all(&buffer[..to_read])
+        output
+            .write_all(&buffer[..to_read])
             .context("Failed to write to output file")?;
 
         if let Some(ref mut h) = hasher {
@@ -440,7 +466,11 @@ pub fn read_disc(config: &ReadConfig, progress_cb: Option<ProgressCallback>) -> 
         // Report progress
         if let Some(ref cb) = progress_cb {
             let elapsed = start.elapsed().as_secs_f64();
-            let speed = if elapsed > 0.0 { (bytes_read as f64 / elapsed) as u64 } else { 0 };
+            let speed = if elapsed > 0.0 {
+                (bytes_read as f64 / elapsed) as u64
+            } else {
+                0
+            };
             let eta = if speed > 0 {
                 (total_bytes - bytes_read) as f64 / speed as f64
             } else {
@@ -461,7 +491,11 @@ pub fn read_disc(config: &ReadConfig, progress_cb: Option<ProgressCallback>) -> 
 
     output.flush()?;
     let duration = start.elapsed().as_secs_f64();
-    let avg_speed = if duration > 0.0 { (bytes_read as f64 / duration) as u64 } else { 0 };
+    let avg_speed = if duration > 0.0 {
+        (bytes_read as f64 / duration) as u64
+    } else {
+        0
+    };
 
     let sha256 = hasher.map(|h| hex::encode(h.finalize()));
 

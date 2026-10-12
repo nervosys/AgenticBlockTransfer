@@ -40,8 +40,10 @@ mod tests {
         fn detect_xz_magic() {
             let mut f = NamedTempFile::with_suffix(".bin").unwrap();
             // xz magic: 0xfd 0x37 0x7a 0x58 0x5a 0x00
-            f.write_all(&[0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-                .unwrap();
+            f.write_all(&[
+                0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ])
+            .unwrap();
             f.flush().unwrap();
             let fmt = detect_format(f.path()).unwrap();
             assert_eq!(fmt, ImageFormat::Xz);
@@ -413,7 +415,10 @@ mod tests {
                 "/dev/sda"
             );
             assert_eq!(
-                format!("{}", ImageSource::Url("https://example.com/image.iso".to_string())),
+                format!(
+                    "{}",
+                    ImageSource::Url("https://example.com/image.iso".to_string())
+                ),
                 "https://example.com/image.iso"
             );
             assert_eq!(format!("{}", ImageSource::Stdin), "<stdin>");
@@ -632,10 +637,7 @@ mod tests {
 
             let info = get_image_info(f.path()).unwrap();
             assert_eq!(info.size, 1024);
-            assert_eq!(
-                info.format,
-                abt::core::types::ImageFormat::Iso,
-            );
+            assert_eq!(info.format, abt::core::types::ImageFormat::Iso,);
         }
 
         #[test]

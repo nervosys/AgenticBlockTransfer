@@ -72,7 +72,10 @@ impl ImageFormat {
 
     /// Whether this format is a compression wrapper.
     pub fn is_compressed(&self) -> bool {
-        matches!(self, Self::Gz | Self::Bz2 | Self::Xz | Self::Zstd | Self::Zip)
+        matches!(
+            self,
+            Self::Gz | Self::Bz2 | Self::Xz | Self::Zstd | Self::Zip
+        )
     }
 }
 

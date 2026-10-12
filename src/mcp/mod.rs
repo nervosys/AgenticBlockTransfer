@@ -320,7 +320,11 @@ impl McpServer {
             // ── Tool invocation ──
             "tools/call" => {
                 let tool_name = request.params.get("name").and_then(|v| v.as_str());
-                let arguments = request.params.get("arguments").cloned().unwrap_or(json!({}));
+                let arguments = request
+                    .params
+                    .get("arguments")
+                    .cloned()
+                    .unwrap_or(json!({}));
 
                 match tool_name {
                     Some(name) => {
@@ -462,7 +466,8 @@ impl McpServer {
             None => return self.error_content("Missing required parameter: target"),
         };
 
-        let mut cmd_parts: Vec<String> = vec!["abt".into(), "verify".into(), "-o".into(), target.into()];
+        let mut cmd_parts: Vec<String> =
+            vec!["abt".into(), "verify".into(), "-o".into(), target.into()];
 
         if let Some(source) = args.get("source").and_then(|v| v.as_str()) {
             cmd_parts.extend_from_slice(&["-i".into(), source.into()]);
@@ -582,11 +587,8 @@ pub fn run_server(oneshot: bool) -> anyhow::Result<()> {
         let request: JsonRpcRequest = match serde_json::from_str(line) {
             Ok(r) => r,
             Err(e) => {
-                let err_resp = JsonRpcResponse::error(
-                    Value::Null,
-                    -32700,
-                    format!("Parse error: {}", e),
-                );
+                let err_resp =
+                    JsonRpcResponse::error(Value::Null, -32700, format!("Parse error: {}", e));
                 let json = serde_json::to_string(&err_resp)?;
                 writeln!(stdout, "{}", json)?;
                 stdout.flush()?;
@@ -651,10 +653,7 @@ mod tests {
         assert!(tools.len() >= 6);
 
         // Verify tool names
-        let names: Vec<&str> = tools
-            .iter()
-            .map(|t| t["name"].as_str().unwrap())
-            .collect();
+        let names: Vec<&str> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
         assert!(names.contains(&"abt_list_devices"));
         assert!(names.contains(&"abt_write"));
         assert!(names.contains(&"abt_verify"));

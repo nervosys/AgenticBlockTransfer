@@ -39,8 +39,7 @@ pub async fn execute(opts: VerifyOpts) -> Result<()> {
             opts.target,
             source_path.display()
         );
-        let matches =
-            verifier::verify_by_hash(&source_path, &opts.target, algorithm, &progress)?;
+        let matches = verifier::verify_by_hash(&source_path, &opts.target, algorithm, &progress)?;
 
         if matches {
             println!("PASS: Target matches source");

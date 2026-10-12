@@ -12,11 +12,6 @@ use crate::cli::{Args, CompletionsOpts};
 
 pub fn execute(opts: CompletionsOpts) -> Result<()> {
     let mut cmd = <Args as clap::CommandFactory>::command();
-    clap_complete::generate(
-        opts.shell,
-        &mut cmd,
-        "abt",
-        &mut std::io::stdout(),
-    );
+    clap_complete::generate(opts.shell, &mut cmd, "abt", &mut std::io::stdout());
     Ok(())
 }

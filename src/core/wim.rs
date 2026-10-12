@@ -41,9 +41,7 @@ impl WimFlags {
     pub const COMPRESS_LZMS: u32 = 0x0008_0000;
 
     pub fn is_compressed(self) -> bool {
-        self.0
-            & (Self::COMPRESS_XPRESS | Self::COMPRESS_LZX | Self::COMPRESS_LZMS)
-            != 0
+        self.0 & (Self::COMPRESS_XPRESS | Self::COMPRESS_LZX | Self::COMPRESS_LZMS) != 0
     }
 
     pub fn compression_name(self) -> &'static str {
@@ -298,7 +296,7 @@ mod tests {
         // Version (minor, major)
         buf.write_u16::<LittleEndian>(14).unwrap(); // minor
         buf.write_u16::<LittleEndian>(1).unwrap(); // major = 1
-        // Flags
+                                                   // Flags
         buf.write_u32::<LittleEndian>(flags).unwrap();
         // Chunk size
         buf.write_u32::<LittleEndian>(32768).unwrap();
@@ -317,7 +315,7 @@ mod tests {
         buf.write_u64::<LittleEndian>(0).unwrap(); // size_and_flags
         buf.write_u64::<LittleEndian>(0).unwrap(); // offset
         buf.write_u64::<LittleEndian>(0).unwrap(); // original_size
-        // XML data (24 bytes)
+                                                   // XML data (24 bytes)
         buf.write_u64::<LittleEndian>(0).unwrap();
         buf.write_u64::<LittleEndian>(0).unwrap();
         buf.write_u64::<LittleEndian>(0).unwrap();

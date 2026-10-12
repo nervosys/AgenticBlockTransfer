@@ -67,7 +67,15 @@ pub async fn execute(opts: FfuOpts) -> Result<()> {
                 });
                 println!("{}", serde_json::to_string_pretty(&json)?);
             } else {
-                println!("{}: {}", path, if is { "FFU image detected" } else { "Not an FFU image" });
+                println!(
+                    "{}: {}",
+                    path,
+                    if is {
+                        "FFU image detected"
+                    } else {
+                        "Not an FFU image"
+                    }
+                );
             }
         }
 

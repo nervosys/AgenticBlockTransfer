@@ -60,8 +60,7 @@ impl KeyRing {
 
     /// Load a key ring from a JSON file.
     pub fn load(path: &Path) -> Result<Self> {
-        let content = std::fs::read_to_string(path)
-            .context("Failed to read key ring file")?;
+        let content = std::fs::read_to_string(path).context("Failed to read key ring file")?;
         serde_json::from_str(&content).context("Failed to parse key ring JSON")
     }
 
@@ -145,8 +144,8 @@ pub fn verify_rsa_sha256_signature(
 
     // PKCS#1 v1.5 SHA-256 DigestInfo prefix (DER encoded)
     let digest_info_prefix: &[u8] = &[
-        0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
-        0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20,
+        0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01,
+        0x05, 0x00, 0x04, 0x20,
     ];
 
     // Build expected PKCS#1 v1.5 padded message
@@ -200,7 +199,10 @@ pub fn decode_pem_public_key(pem: &str) -> Result<Vec<u8>> {
 fn base64_decode(input: &str) -> Result<Vec<u8>> {
     const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-    let input: Vec<u8> = input.bytes().filter(|&b| b != b'\n' && b != b'\r' && b != b' ').collect();
+    let input: Vec<u8> = input
+        .bytes()
+        .filter(|&b| b != b'\n' && b != b'\r' && b != b' ')
+        .collect();
     let mut output = Vec::with_capacity(input.len() * 3 / 4);
 
     for chunk in input.chunks(4) {
@@ -210,8 +212,11 @@ fn base64_decode(input: &str) -> Result<Vec<u8>> {
             if byte == b'=' {
                 break;
             }
-            buf[i] = TABLE.iter().position(|&c| c == byte)
-                .ok_or_else(|| anyhow::anyhow!("Invalid base64 character: {}", byte as char))? as u8;
+            buf[i] = TABLE
+                .iter()
+                .position(|&c| c == byte)
+                .ok_or_else(|| anyhow::anyhow!("Invalid base64 character: {}", byte as char))?
+                as u8;
             count = i + 1;
         }
         if count >= 2 {
@@ -243,7 +248,10 @@ fn extract_rsa_key_size(der: &[u8]) -> Result<usize> {
     } else if der.len() > 160 {
         Ok(128) // 1024-bit key
     } else {
-        anyhow::bail!("RSA key too small or unrecognized format (DER len={})", der.len())
+        anyhow::bail!(
+            "RSA key too small or unrecognized format (DER len={})",
+            der.len()
+        )
     }
 }
 

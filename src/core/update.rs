@@ -206,10 +206,7 @@ pub async fn check_for_updates(opts: &UpdateCheckOpts) -> Result<UpdateCheckResu
 
     info!("Checking for updates: {}", opts.repo);
 
-    let api_url = format!(
-        "https://api.github.com/repos/{}/releases/latest",
-        opts.repo
-    );
+    let api_url = format!("https://api.github.com/repos/{}/releases/latest", opts.repo);
 
     let client = reqwest::Client::builder()
         .user_agent(format!("abt/{}", CURRENT_VERSION))
@@ -223,10 +220,7 @@ pub async fn check_for_updates(opts: &UpdateCheckOpts) -> Result<UpdateCheckResu
         .await?;
 
     if !resp.status().is_success() {
-        anyhow::bail!(
-            "GitHub API request failed: HTTP {}",
-            resp.status().as_u16()
-        );
+        anyhow::bail!("GitHub API request failed: HTTP {}", resp.status().as_u16());
     }
 
     let release: ReleaseInfo = resp
@@ -236,7 +230,10 @@ pub async fn check_for_updates(opts: &UpdateCheckOpts) -> Result<UpdateCheckResu
 
     // Skip pre-releases unless opted in
     if release.prerelease && !opts.include_prerelease {
-        info!("Latest release {} is a pre-release, skipping", release.tag_name);
+        info!(
+            "Latest release {} is a pre-release, skipping",
+            release.tag_name
+        );
         return Ok(UpdateCheckResult {
             current_version: CURRENT_VERSION.to_string(),
             latest_version: CURRENT_VERSION.to_string(),
@@ -249,7 +246,10 @@ pub async fn check_for_updates(opts: &UpdateCheckOpts) -> Result<UpdateCheckResu
         });
     }
 
-    let remote_version = release.tag_name.strip_prefix('v').unwrap_or(&release.tag_name);
+    let remote_version = release
+        .tag_name
+        .strip_prefix('v')
+        .unwrap_or(&release.tag_name);
     let update_available = is_newer(CURRENT_VERSION, remote_version);
 
     // Find platform-specific download URL

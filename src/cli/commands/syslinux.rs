@@ -57,17 +57,20 @@ pub async fn execute(opts: SyslinuxOpts) -> Result<()> {
                 if let Some(ref pre) = v.pre_release {
                     println!("  Pre:        {}", pre);
                 }
-                println!("  v6+:        {}", if v.is_v6_or_later() { "Yes" } else { "No" });
-                println!("  Needs .c32: {}", if v.needs_c32_modules() { "Yes" } else { "No" });
+                println!(
+                    "  v6+:        {}",
+                    if v.is_v6_or_later() { "Yes" } else { "No" }
+                );
+                println!(
+                    "  Needs .c32: {}",
+                    if v.needs_c32_modules() { "Yes" } else { "No" }
+                );
             } else {
                 println!("No Syslinux version string found in {}", file_path);
             }
         }
         "plan" => {
-            let bootloader_str = opts
-                .bootloader
-                .as_deref()
-                .unwrap_or("syslinux-v6");
+            let bootloader_str = opts.bootloader.as_deref().unwrap_or("syslinux-v6");
             let fs_str = opts.filesystem.as_deref().unwrap_or("FAT32");
 
             let bootloader = match bootloader_str {
@@ -94,13 +97,21 @@ pub async fn execute(opts: SyslinuxOpts) -> Result<()> {
                 println!("  MBR Action: {}", plan.boot_record_action);
                 println!(
                     "  Download:   {}",
-                    if plan.needs_download { "Required" } else { "Not needed" }
+                    if plan.needs_download {
+                        "Required"
+                    } else {
+                        "Not needed"
+                    }
                 );
                 if !plan.files_to_copy.is_empty() {
                     println!();
                     println!("Files to install:");
                     for f in &plan.files_to_copy {
-                        let flags = if f.hidden_system { " [hidden+system]" } else { "" };
+                        let flags = if f.hidden_system {
+                            " [hidden+system]"
+                        } else {
+                            ""
+                        };
                         println!("  {} → {}{}", f.source, f.destination, flags);
                     }
                 }
@@ -133,10 +144,7 @@ pub async fn execute(opts: SyslinuxOpts) -> Result<()> {
 
             let output = syslinux::generate_syslinux_config(&config);
             if opts.json {
-                println!(
-                    "{}",
-                    serde_json::json!({ "syslinux_cfg": output })
-                );
+                println!("{}", serde_json::json!({ "syslinux_cfg": output }));
             } else {
                 print!("{}", output);
             }

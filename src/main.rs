@@ -140,7 +140,9 @@ async fn main() -> Result<()> {
         cli::Command::SecureBoot(opts) => cli::commands::secureboot::execute(opts).await,
         cli::Command::FsDetect(opts) => cli::commands::fs_detect::execute(opts).await,
         cli::Command::DriveScan(opts) => cli::commands::drive_scan::execute(opts).await,
-        cli::Command::DriveConstraints(opts) => cli::commands::drive_constraints::execute(opts).await,
+        cli::Command::DriveConstraints(opts) => {
+            cli::commands::drive_constraints::execute(opts).await
+        }
         cli::Command::WinToGo(opts) => cli::commands::wintogo::execute(opts).await,
         cli::Command::Syslinux(opts) => cli::commands::syslinux::execute(opts).await,
         cli::Command::Ffu(opts) => cli::commands::ffu::execute(opts).await,

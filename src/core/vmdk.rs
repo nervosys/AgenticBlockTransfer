@@ -125,7 +125,8 @@ impl VmdkSparseHeader {
 
     /// Number of grain directory entries.
     pub fn gd_entry_count(&self) -> u64 {
-        let grains = (self.capacity_sectors + self.grain_size_sectors - 1) / self.grain_size_sectors;
+        let grains =
+            (self.capacity_sectors + self.grain_size_sectors - 1) / self.grain_size_sectors;
         (grains + self.num_gte_per_gt as u64 - 1) / self.num_gte_per_gt as u64
     }
 

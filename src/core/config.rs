@@ -159,17 +159,18 @@ impl Config {
     /// Write the default configuration to the platform-specific path.
     /// Creates the parent directory if needed.
     pub fn write_default() -> Result<PathBuf> {
-        let path = config_path()
-            .ok_or_else(|| anyhow::anyhow!("Cannot determine config directory"))?;
+        let path =
+            config_path().ok_or_else(|| anyhow::anyhow!("Cannot determine config directory"))?;
 
         if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("Failed to create config directory: {}", parent.display()))?;
+            fs::create_dir_all(parent).with_context(|| {
+                format!("Failed to create config directory: {}", parent.display())
+            })?;
         }
 
         let default = Config::default();
-        let toml_str = toml::to_string_pretty(&default)
-            .context("Failed to serialize default config")?;
+        let toml_str =
+            toml::to_string_pretty(&default).context("Failed to serialize default config")?;
 
         fs::write(&path, &toml_str)
             .with_context(|| format!("Failed to write config file: {}", path.display()))?;

@@ -352,7 +352,10 @@ pub fn parse_version_string(version: &str) -> Option<SyslinuxVersion> {
     }
 
     let major = parts[0].parse::<u32>().ok()?;
-    let minor = parts.get(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(0);
+    let minor = parts
+        .get(1)
+        .and_then(|s| s.parse::<u32>().ok())
+        .unwrap_or(0);
     let patch = parts.get(2).and_then(|s| s.parse::<u32>().ok());
 
     Some(SyslinuxVersion {
@@ -464,10 +467,7 @@ pub fn detect_bootloaders(file_paths: &[&str]) -> Vec<BootloaderDetection> {
     }
 
     // Check for ReactOS FreeLoader
-    let freeldr_files = check_bootloader_files(
-        &paths_lower,
-        &["freeldr.sys", "freeldr.ini"],
-    );
+    let freeldr_files = check_bootloader_files(&paths_lower, &["freeldr.sys", "freeldr.ini"]);
     if !freeldr_files.is_empty() {
         detections.push(BootloaderDetection {
             bootloader_type: BootloaderType::Freeldr,
@@ -535,10 +535,7 @@ pub fn generate_syslinux_config(config: &SyslinuxConfig) -> String {
 }
 
 /// Create an installation plan for a bootloader.
-pub fn plan_installation(
-    bootloader: BootloaderType,
-    target_fs: &str,
-) -> Result<InstallPlan> {
+pub fn plan_installation(bootloader: BootloaderType, target_fs: &str) -> Result<InstallPlan> {
     // Validate filesystem compatibility
     let fs_lower = target_fs.to_lowercase();
     match bootloader {

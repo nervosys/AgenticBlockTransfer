@@ -8,7 +8,9 @@ use crate::core::checksum_file;
 
 pub async fn execute(opts: ChecksumFileOpts) -> Result<()> {
     // Load the checksum file (from URL or local path)
-    let cf = if opts.checksum_file.starts_with("http://") || opts.checksum_file.starts_with("https://") {
+    let cf = if opts.checksum_file.starts_with("http://")
+        || opts.checksum_file.starts_with("https://")
+    {
         checksum_file::fetch_checksum_file(&opts.checksum_file).await?
     } else {
         checksum_file::load_checksum_file(std::path::Path::new(&opts.checksum_file))?
@@ -46,9 +48,7 @@ pub async fn execute(opts: ChecksumFileOpts) -> Result<()> {
                 "{} ({} entries, {}):",
                 cf.source_file,
                 cf.len(),
-                cf.algorithm
-                    .map(|a| a.name())
-                    .unwrap_or("unknown")
+                cf.algorithm.map(|a| a.name()).unwrap_or("unknown")
             );
             for entry in &cf.entries {
                 println!("  {}  {}", entry.hash, entry.filename);

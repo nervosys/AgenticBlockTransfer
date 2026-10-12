@@ -4,7 +4,7 @@ use anyhow::Result;
 use log::info;
 
 use crate::cli::{self, CloneOpts};
-use crate::core::clone::{CloneConfig, clone_device};
+use crate::core::clone::{clone_device, CloneConfig};
 use crate::core::progress::Progress;
 use crate::core::types::HashAlgorithm;
 
@@ -36,11 +36,7 @@ pub async fn execute(opts: CloneOpts) -> Result<()> {
 
     info!(
         "Cloning {} -> {} (block_size={}, verify={}, sparse={})",
-        opts.source,
-        opts.target,
-        opts.block_size,
-        opts.verify,
-        opts.sparse
+        opts.source, opts.target, opts.block_size, opts.verify, opts.sparse
     );
 
     let result = clone_device(&config, &progress)?;
