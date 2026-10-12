@@ -15,11 +15,11 @@
 
 #![allow(dead_code)]
 
-#[cfg(not(windows))]
+#[cfg_attr(not(target_os = "linux"), allow(unused_imports))]
 use anyhow::Context;
 use anyhow::Result;
 use std::collections::HashMap;
-#[cfg(not(windows))]
+#[cfg_attr(not(target_os = "linux"), allow(unused_imports))]
 use std::path::Path;
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -256,7 +256,7 @@ pub fn scan_locks(target: &str, config: &LockScanConfig) -> Result<LockScanResul
 fn scan_linux(target: &str, config: &LockScanConfig, result: &mut LockScanResult) -> Result<()> {
     use std::fs;
 
-    let target_path = Path::new(target);
+    let _target_path = Path::new(target);
 
     // Resolve mount points for the target device
     let mount_points = if config.resolve_mounts {

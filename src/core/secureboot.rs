@@ -15,11 +15,12 @@
 
 use anyhow::{bail, Result};
 // debug is used only by the Windows implementation.
-#[cfg(not(windows))]
+#[cfg_attr(not(target_os = "linux"), allow(unused_imports))]
 use anyhow::Context;
 #[cfg_attr(not(windows), allow(unused_imports))]
 use log::debug;
 use serde::{Deserialize, Serialize};
+#[cfg_attr(not(target_os = "linux"), allow(unused_imports))]
 use std::path::Path;
 
 /// Secure Boot state.

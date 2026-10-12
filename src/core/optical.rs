@@ -17,8 +17,8 @@
 
 use anyhow::{bail, Context, Result};
 use std::io::{Read, Seek, SeekFrom, Write};
-// Path is used only by the non-Windows code paths.
-#[cfg_attr(windows, allow(unused_imports))]
+// Path is used only by the Linux code paths.
+#[cfg_attr(not(target_os = "linux"), allow(unused_imports))]
 use std::path::Path;
 use std::path::PathBuf;
 

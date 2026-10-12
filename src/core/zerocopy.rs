@@ -70,6 +70,8 @@ pub fn transfer(
 
     #[cfg(any(target_os = "macos", target_os = "freebsd"))]
     {
+        // sendfile(2) moves the whole file itself and takes no block size.
+        let _ = block_size;
         transfer_sendfile(source, target, byte_limit, progress)
     }
 
@@ -95,7 +97,7 @@ fn transfer_splice(
     byte_limit: Option<u64>,
     progress: &Progress,
 ) -> Result<ZeroCopyResult> {
-    use std::os::unix::io::AsRawFd;
+    use std::os::unix::io::{AsFd, AsRawFd};
 
     let source_file = std::fs::File::open(source)
         .with_context(|| format!("Failed to open source {}", source.display()))?;
@@ -107,9 +109,6 @@ fn transfer_splice(
     // Create pipe for splice intermediary
     let (pipe_read, pipe_write) =
         nix::unistd::pipe().context("Failed to create pipe for splice")?;
-
-    let source_fd = source_file.as_raw_fd();
-    let target_fd = target_file.as_raw_fd();
 
     let pipe_size = block_size.min(1024 * 1024) as usize; // Cap pipe at 1 MiB
     let max_bytes = byte_limit.unwrap_or(u64::MAX);
@@ -135,9 +134,9 @@ fn transfer_splice(
 
         // splice: source → pipe
         let spliced_in = match nix::fcntl::splice(
-            source_fd,
+            source_file.as_fd(),
             None,
-            pipe_write.as_raw_fd(),
+            pipe_write.as_fd(),
             None,
             chunk,
             nix::fcntl::SpliceFFlags::SPLICE_F_MOVE | nix::fcntl::SpliceFFlags::SPLICE_F_MORE,
@@ -160,9 +159,9 @@ fn transfer_splice(
         let mut sent = 0;
         while sent < spliced_in {
             match nix::fcntl::splice(
-                pipe_read.as_raw_fd(),
+                pipe_read.as_fd(),
                 None,
-                target_fd,
+                target_file.as_fd(),
                 None,
                 spliced_in - sent,
                 nix::fcntl::SpliceFFlags::SPLICE_F_MOVE | nix::fcntl::SpliceFFlags::SPLICE_F_MORE,

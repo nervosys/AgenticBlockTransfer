@@ -13,7 +13,7 @@ use anyhow::Result;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use std::fmt;
-#[cfg(not(windows))]
+#[cfg_attr(not(target_os = "linux"), allow(unused_imports))]
 use std::path::Path;
 
 /// USB speed classification.
