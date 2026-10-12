@@ -749,16 +749,17 @@ fn get_aws_credentials() -> Option<(String, String)> {
 
 /// HMAC-SHA256.
 fn hmac_sha256(key: &[u8], msg: &[u8]) -> Vec<u8> {
-    use hmac::{Hmac, Mac};
-    type HmacSha256 = Hmac<sha2::Sha256>;
-    let mut mac = HmacSha256::new_from_slice(key).expect("HMAC key length");
+    use ironcrypto::mac::HmacSha256;
+    use ironcrypto::prelude::Mac;
+    let mut mac = HmacSha256::new(key).expect("HMAC accepts any key length");
     mac.update(msg);
-    mac.finalize().into_bytes().to_vec()
+    mac.finalize().to_vec()
 }
 
 /// SHA-256 hex digest.
 fn sha256_hex(data: &[u8]) -> String {
-    use sha2::{Digest, Sha256};
+    use ironcrypto::hash::Sha256;
+    use ironcrypto::prelude::Digest;
     let hash = Sha256::digest(data);
     hex::encode(hash)
 }

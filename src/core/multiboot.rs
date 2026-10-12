@@ -470,9 +470,9 @@ fn generate_menu_entry(index: usize, image: &MultibootImage) -> String {
 
 /// Compute SHA-256 hash of a file.
 fn compute_file_hash(path: &Path) -> Result<String> {
-    use sha2::Digest;
+    use ironcrypto::prelude::Digest;
     let mut file = std::fs::File::open(path)?;
-    let mut hasher = sha2::Sha256::new();
+    let mut hasher = ironcrypto::hash::Sha256::new();
     let mut buf = vec![0u8; 1024 * 1024];
 
     loop {

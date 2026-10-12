@@ -34,13 +34,15 @@ byteorder = "1"
 bytes = "1"
 uuid = { version = "1", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
-sha2 = "0.10"
+# Cryptography: IronCrypto for SHA-2, HMAC, and RSA. SHA-1, MD5, and BLAKE3
+# stay on RustCrypto/blake3 because IronCrypto does not implement them, and
+# published checksums still use them.
+ironcrypto = "0.2.24"
 sha1 = "0.10"
 md-5 = "0.10"
 crc32fast = "1"
 blake3 = "1"
 hex = "0.4"
-hmac = "0.12"
 getrandom = "0.2"
 hostname = "0.4"
 whoami = "1"

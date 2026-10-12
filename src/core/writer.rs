@@ -1,6 +1,8 @@
 use anyhow::Result;
+use ironcrypto::hash::{Sha256, Sha512};
+use ironcrypto::prelude::Digest as IcDigest;
 use log::{info, warn};
-use sha2::{digest, Digest};
+use md5::Digest;
 use std::io::{BufReader, BufWriter, Read, Seek, Write};
 use std::time::Duration;
 
@@ -504,13 +506,23 @@ trait InlineHasher: Send {
 struct DigestInline<D: Digest + Send>(D);
 impl<D: Digest + Send> InlineHasher for DigestInline<D>
 where
-    digest::Output<D>: std::fmt::LowerHex,
+    md5::digest::Output<D>: std::fmt::LowerHex,
 {
     fn update(&mut self, data: &[u8]) {
         self.0.update(data);
     }
     fn finalize_hex(self: Box<Self>) -> String {
         format!("{:x}", self.0.finalize())
+    }
+}
+
+struct IcDigestInline<D: IcDigest + Send>(D);
+impl<D: IcDigest + Send> InlineHasher for IcDigestInline<D> {
+    fn update(&mut self, data: &[u8]) {
+        self.0.update(data);
+    }
+    fn finalize_hex(self: Box<Self>) -> String {
+        hex::encode(self.0.finalize())
     }
 }
 
@@ -538,8 +550,8 @@ fn create_inline_hasher(algo: HashAlgorithm) -> Box<dyn InlineHasher> {
     match algo {
         HashAlgorithm::Md5 => Box::new(DigestInline(md5::Md5::new())),
         HashAlgorithm::Sha1 => Box::new(DigestInline(sha1::Sha1::new())),
-        HashAlgorithm::Sha256 => Box::new(DigestInline(sha2::Sha256::new())),
-        HashAlgorithm::Sha512 => Box::new(DigestInline(sha2::Sha512::new())),
+        HashAlgorithm::Sha256 => Box::new(IcDigestInline(Sha256::new())),
+        HashAlgorithm::Sha512 => Box::new(IcDigestInline(Sha512::new())),
         HashAlgorithm::Blake3 => Box::new(Blake3Inline(blake3::Hasher::new())),
         HashAlgorithm::Crc32 => Box::new(Crc32Inline(crc32fast::Hasher::new())),
     }

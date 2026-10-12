@@ -52,9 +52,10 @@
 
 #![allow(dead_code)]
 
-use hmac::Mac;
+use ironcrypto::hash::Sha256;
+use ironcrypto::mac::HmacSha256;
+use ironcrypto::prelude::{Digest, Mac};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -664,10 +665,9 @@ impl AuditLog {
             "{}|{}|{}|{}|{}",
             self.last_hash, event.sequence, event.timestamp, event.event_type, event.outcome
         );
-        let mut mac = hmac::Hmac::<Sha256>::new_from_slice(&self.hmac_key)
-            .expect("HMAC key length is always valid");
+        let mut mac = HmacSha256::new(&self.hmac_key).expect("HMAC accepts any key length");
         mac.update(chain_input.as_bytes());
-        let hash = hex::encode(mac.finalize().into_bytes());
+        let hash = hex::encode(mac.finalize());
 
         event.integrity_hash = Some(hash.clone());
         self.last_hash = hash;
@@ -883,8 +883,9 @@ pub fn self_assessment() -> Vec<ComplianceFinding> {
         severity: ComplianceSeverity::NonCompliant,
         standard: "FIPS 140-2 / FIPS 140-3".into(),
         title: "No CMVP-validated cryptographic module".into(),
-        description: "Hash implementations (sha2, blake3 crates) and TLS (rustls) are \
-                      pure-Rust implementations without CMVP validation certificates. \
+        description: "Hash and MAC implementations (IronCrypto, blake3, RustCrypto md-5 and \
+                      sha1) and TLS (rustls) are pure-Rust implementations without CMVP \
+                      validation certificates. \
                       FIPS 140-2/3 requires use of validated cryptographic modules."
             .into(),
         remediation: "Integrate aws-lc-rs (FIPS-validated) as the rustls crypto backend. \

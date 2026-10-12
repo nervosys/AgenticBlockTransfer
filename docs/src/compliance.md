@@ -111,9 +111,10 @@ abt write -i image.iso -o \\.\PhysicalDrive1
 
 **Severity:** Non-compliant for FIPS 140-2/3 Level 1 certification
 
-The hash implementations (sha2, blake3 crates) and TLS stack (rustls) are
-pure-Rust implementations that have not undergone CMVP validation. They do not
-hold FIPS 140-2/3 certificates.
+The hash and MAC implementations (IronCrypto for SHA-2, HMAC, and RSA; the
+RustCrypto md-5 and sha1 crates and blake3 for the rest) and the TLS stack
+(rustls) are pure-Rust implementations that have not undergone CMVP validation.
+They do not hold FIPS 140-2/3 certificates.
 
 **Remediation path:**
 1. Switch `rustls` to use `aws-lc-rs` as its cryptographic backend

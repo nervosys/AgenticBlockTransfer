@@ -3,8 +3,9 @@
 // Inspired by rpi-imager's CacheManager with background verification.
 
 use anyhow::{anyhow, Result};
+use ironcrypto::hash::Sha256;
+use ironcrypto::prelude::Digest;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::fmt;
 use std::io::{BufReader, Read};

@@ -376,7 +376,8 @@ pub fn get_disc_info(device: &str) -> Result<DiscInfo> {
 
 /// Read an entire optical disc and save to an ISO file.
 pub fn read_disc(config: &ReadConfig, progress_cb: Option<ProgressCallback>) -> Result<ReadResult> {
-    use sha2::{Digest, Sha256};
+    use ironcrypto::hash::Sha256;
+    use ironcrypto::prelude::Digest;
     use std::time::Instant;
 
     // Open source device

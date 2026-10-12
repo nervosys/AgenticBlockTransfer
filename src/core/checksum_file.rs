@@ -326,7 +326,8 @@ pub async fn fetch_checksum_file(url: &str) -> Result<ChecksumFile> {
 
 /// Verify a file against a checksum entry by computing its hash.
 pub async fn verify_file_checksum(file_path: &Path, expected: &ChecksumEntry) -> Result<bool> {
-    use sha2::{Digest, Sha256, Sha512};
+    use ironcrypto::hash::{Sha256, Sha512};
+    use ironcrypto::prelude::Digest;
 
     info!(
         "Verifying {} hash of {}...",
@@ -350,12 +351,12 @@ pub async fn verify_file_checksum(file_path: &Path, expected: &ChecksumEntry) ->
             hex::encode(hasher.finalize())
         }
         HashAlgorithm::Sha1 => {
-            let mut hasher = sha1::Sha1::new();
+            let mut hasher: sha1::Sha1 = sha1::Digest::new();
             sha1::Digest::update(&mut hasher, &data);
             hex::encode(sha1::Digest::finalize(hasher))
         }
         HashAlgorithm::Md5 => {
-            let mut hasher = md5::Md5::new();
+            let mut hasher: md5::Md5 = md5::Digest::new();
             md5::Digest::update(&mut hasher, &data);
             hex::encode(md5::Digest::finalize(hasher))
         }
