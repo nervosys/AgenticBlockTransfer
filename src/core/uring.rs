@@ -8,6 +8,8 @@
 //! Falls back gracefully to standard I/O on non-Linux or older kernels.
 
 use std::io::{self, Read, Write};
+#[cfg(target_os = "linux")]
+use std::io::{Seek, SeekFrom};
 use std::path::Path;
 
 use anyhow::{Context, Result};

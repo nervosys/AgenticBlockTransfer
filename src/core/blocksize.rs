@@ -231,7 +231,11 @@ fn open_for_bench(path: &str, direct_io: bool) -> Result<Box<dyn WriteSeek>> {
         use std::os::unix::fs::OpenOptionsExt;
         let mut flags = libc::O_SYNC;
         if direct_io {
-            flags |= libc::O_DIRECT;
+            // O_DIRECT is Linux-only; macOS has no equivalent open flag.
+            #[cfg(target_os = "linux")]
+            {
+                flags |= libc::O_DIRECT;
+            }
         }
         let file = std::fs::OpenOptions::new()
             .read(true)

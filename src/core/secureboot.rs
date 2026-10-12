@@ -14,6 +14,10 @@
 #![allow(dead_code)]
 
 use anyhow::{bail, Result};
+// debug is used only by the Windows implementation.
+#[cfg(not(windows))]
+use anyhow::Context;
+#[cfg_attr(not(windows), allow(unused_imports))]
 use log::debug;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -197,7 +201,7 @@ pub fn read_efi_variable(name: &str, guid: &str) -> Result<Vec<u8>> {
 
 /// Read a UEFI EFI variable (unsupported platform stub).
 #[cfg(not(any(target_os = "linux", target_os = "windows")))]
-pub fn read_efi_variable(name: &str, guid: &str) -> Result<Vec<u8>> {
+pub fn read_efi_variable(_name: &str, _guid: &str) -> Result<Vec<u8>> {
     bail!("EFI variable reading not supported on this platform")
 }
 

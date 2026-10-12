@@ -423,7 +423,11 @@ pub(crate) fn open_device_for_writing(
         use std::os::unix::fs::OpenOptionsExt;
         let mut flags = libc::O_SYNC;
         if direct_io {
-            flags |= libc::O_DIRECT;
+            // O_DIRECT is Linux-only; macOS has no equivalent open flag.
+            #[cfg(target_os = "linux")]
+            {
+                flags |= libc::O_DIRECT;
+            }
         }
         let file = std::fs::OpenOptions::new()
             .write(true)

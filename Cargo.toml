@@ -83,10 +83,10 @@ notify-rust = "4"
 memmap2 = "0.9"
 
 # Platform
-nix = { version = "0.29", features = ["fs", "ioctl", "mount"], optional = true }
+nix = { version = "0.29", features = ["fs", "ioctl", "mount", "zerocopy"], optional = true }
 
 [target.'cfg(unix)'.dependencies]
-nix = { version = "0.29", features = ["fs", "ioctl", "mount"] }
+nix = { version = "0.29", features = ["fs", "ioctl", "mount", "zerocopy"] }
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]

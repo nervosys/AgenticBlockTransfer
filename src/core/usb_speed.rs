@@ -13,6 +13,8 @@ use anyhow::Result;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use std::fmt;
+#[cfg(not(windows))]
+use std::path::Path;
 
 /// USB speed classification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]

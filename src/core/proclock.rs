@@ -15,8 +15,12 @@
 
 #![allow(dead_code)]
 
+#[cfg(not(windows))]
+use anyhow::Context;
 use anyhow::Result;
 use std::collections::HashMap;
+#[cfg(not(windows))]
+use std::path::Path;
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 

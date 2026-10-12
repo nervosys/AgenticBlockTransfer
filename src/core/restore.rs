@@ -746,11 +746,12 @@ mod tests {
             label: "TEST".into(),
             ..Default::default()
         };
-        let _cmds = describe_restore_commands(&cfg, 16 * 1024 * 1024 * 1024);
-        // On any platform, commands should be non-empty
-        // (compiled for the current target)
+        let cmds = describe_restore_commands(&cfg, 16 * 1024 * 1024 * 1024);
+        // The Linux command set is checked here; other platforms only build it.
         #[cfg(target_os = "linux")]
         assert!(cmds.len() >= 3);
+        #[cfg(not(target_os = "linux"))]
+        let _ = cmds;
     }
 
     #[test]

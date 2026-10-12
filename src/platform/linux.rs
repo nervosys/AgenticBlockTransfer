@@ -55,11 +55,6 @@ impl DeviceEnumerator for LinuxDeviceEnumerator {
 
     async fn unmount_device(&self, path: &str) -> Result<()> {
         // Find and unmount all partitions
-        let name = Path::new(path)
-            .file_name()
-            .unwrap_or_default()
-            .to_string_lossy();
-
         let output = tokio::process::Command::new("lsblk")
             .args(["-nlo", "MOUNTPOINT", path])
             .output()

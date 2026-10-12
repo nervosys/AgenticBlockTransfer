@@ -945,6 +945,10 @@ pub fn start_background_flush() {
 
 #[cfg(test)]
 mod tests {
+    /// The usage recorder is process-wide; tests that toggle it or read its events
+    /// must not interleave.
+    static USAGE_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     use super::*;
 
     #[test]
@@ -1204,6 +1208,7 @@ mod tests {
 
     #[test]
     fn test_usage_enable_disable() {
+        let _usage_guard = USAGE_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         // Save original state
         let was_enabled = usage_is_enabled();
         usage_enable();
@@ -1220,6 +1225,7 @@ mod tests {
 
     #[test]
     fn test_usage_status_disabled() {
+        let _usage_guard = USAGE_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let was_enabled = usage_is_enabled();
         usage_disable();
         let status = usage_status();
@@ -1231,6 +1237,7 @@ mod tests {
 
     #[test]
     fn test_record_usage_when_disabled() {
+        let _usage_guard = USAGE_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let was_enabled = usage_is_enabled();
         usage_disable();
         let before = usage_event_count();
@@ -1247,6 +1254,7 @@ mod tests {
     }
     #[test]
     fn test_record_usage_when_enabled() {
+        let _usage_guard = USAGE_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let was_enabled = usage_is_enabled();
         usage_enable();
         reset_usage();
@@ -1262,6 +1270,7 @@ mod tests {
 
     #[test]
     fn test_record_command() {
+        let _usage_guard = USAGE_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let was_enabled = usage_is_enabled();
         usage_enable();
         reset_usage();
@@ -1279,6 +1288,7 @@ mod tests {
 
     #[test]
     fn test_record_error() {
+        let _usage_guard = USAGE_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let was_enabled = usage_is_enabled();
         usage_enable();
         reset_usage();
@@ -1341,6 +1351,7 @@ mod tests {
 
     #[test]
     fn test_reset_usage() {
+        let _usage_guard = USAGE_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let was_enabled = usage_is_enabled();
         usage_enable();
         record_usage("test", HashMap::new(), 1.0);

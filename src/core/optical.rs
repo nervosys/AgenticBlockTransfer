@@ -17,7 +17,10 @@
 
 use anyhow::{bail, Context, Result};
 use std::io::{Read, Seek, SeekFrom, Write};
-use std::path::{Path, PathBuf};
+// Path is used only by the non-Windows code paths.
+#[cfg_attr(windows, allow(unused_imports))]
+use std::path::Path;
+use std::path::PathBuf;
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 

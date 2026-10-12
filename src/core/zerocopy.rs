@@ -11,6 +11,8 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
+use log::info;
 use log::warn;
 
 use super::progress::Progress;
