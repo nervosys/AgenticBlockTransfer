@@ -35,13 +35,13 @@ pub async fn execute(opts: WriteOpts, output_format: &OutputFormat) -> Result<()
     };
 
     let hash_algorithm = match opts.hash_algorithm.to_lowercase().as_str() {
-        "md5" => Some(HashAlgorithm::Md5),
-        "sha1" => Some(HashAlgorithm::Sha1),
         "sha256" => Some(HashAlgorithm::Sha256),
         "sha512" => Some(HashAlgorithm::Sha512),
-        "blake3" => Some(HashAlgorithm::Blake3),
         "crc32" => Some(HashAlgorithm::Crc32),
-        _ => Some(HashAlgorithm::Sha256),
+        other => anyhow::bail!(
+            "Unknown or unsupported hash algorithm: {} (supported: sha256, sha512, crc32)",
+            other
+        ),
     };
 
     let verify = opts.verify && !opts.no_verify;

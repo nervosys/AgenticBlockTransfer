@@ -134,7 +134,7 @@ fn tool_definitions() -> Value {
         },
         {
             "name": "abt_checksum",
-            "description": "Compute cryptographic hash of a file or device. Supports MD5, SHA-1, SHA-256, SHA-512, BLAKE3, CRC32.",
+            "description": "Compute cryptographic hash of a file or device. Supports SHA-256, SHA-512, CRC32.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -145,7 +145,7 @@ fn tool_definitions() -> Value {
                     "algorithm": {
                         "type": "string",
                         "description": "Hash algorithm (default: sha256)",
-                        "enum": ["md5", "sha1", "sha256", "sha512", "blake3", "crc32"],
+                        "enum": ["sha256", "sha512", "crc32"],
                         "default": "sha256"
                     }
                 },

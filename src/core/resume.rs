@@ -160,11 +160,8 @@ impl WriteCheckpoint {
         use crate::core::types::HashAlgorithm;
 
         let algo: HashAlgorithm = match self.algorithm.to_lowercase().as_str() {
-            "md5" => HashAlgorithm::Md5,
-            "sha1" => HashAlgorithm::Sha1,
             "sha256" => HashAlgorithm::Sha256,
             "sha512" => HashAlgorithm::Sha512,
-            "blake3" => HashAlgorithm::Blake3,
             "crc32" => HashAlgorithm::Crc32,
             _ => bail!("Unknown hash algorithm in checkpoint: {}", self.algorithm),
         };
@@ -302,7 +299,7 @@ mod tests {
     #[test]
     fn checkpoint_validate_algo_mismatch() {
         let cp = WriteCheckpoint::new("src.img", "tgt.img", 1024, "hash", "sha256", 4096);
-        assert!(cp.validate("src.img", "tgt.img", "blake3").is_err());
+        assert!(cp.validate("src.img", "tgt.img", "sha512").is_err());
     }
 
     #[test]

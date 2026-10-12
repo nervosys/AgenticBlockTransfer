@@ -2,7 +2,6 @@ use anyhow::Result;
 use ironcrypto::hash::{Sha256, Sha512};
 use ironcrypto::prelude::Digest as IcDigest;
 use log::{info, warn};
-use md5::Digest;
 use std::io::{BufReader, BufWriter, Read, Seek, Write};
 use std::time::Duration;
 
@@ -171,7 +170,7 @@ impl Writer {
             let target = self.config.target.clone();
             let bytes_written = write_result.bytes_written;
             let write_hash = write_result.write_hash.clone();
-            let hash_algo = self.config.hash_algorithm.unwrap_or(HashAlgorithm::Blake3);
+            let hash_algo = self.config.hash_algorithm.unwrap_or(HashAlgorithm::Sha256);
             let progress = self.progress.clone();
 
             tokio::task::spawn_blocking(move || {
@@ -503,19 +502,6 @@ trait InlineHasher: Send {
     fn finalize_hex(self: Box<Self>) -> String;
 }
 
-struct DigestInline<D: Digest + Send>(D);
-impl<D: Digest + Send> InlineHasher for DigestInline<D>
-where
-    md5::digest::Output<D>: std::fmt::LowerHex,
-{
-    fn update(&mut self, data: &[u8]) {
-        self.0.update(data);
-    }
-    fn finalize_hex(self: Box<Self>) -> String {
-        format!("{:x}", self.0.finalize())
-    }
-}
-
 struct IcDigestInline<D: IcDigest + Send>(D);
 impl<D: IcDigest + Send> InlineHasher for IcDigestInline<D> {
     fn update(&mut self, data: &[u8]) {
@@ -523,16 +509,6 @@ impl<D: IcDigest + Send> InlineHasher for IcDigestInline<D> {
     }
     fn finalize_hex(self: Box<Self>) -> String {
         hex::encode(self.0.finalize())
-    }
-}
-
-struct Blake3Inline(blake3::Hasher);
-impl InlineHasher for Blake3Inline {
-    fn update(&mut self, data: &[u8]) {
-        self.0.update(data);
-    }
-    fn finalize_hex(self: Box<Self>) -> String {
-        self.0.finalize().to_hex().to_string()
     }
 }
 
@@ -548,11 +524,8 @@ impl InlineHasher for Crc32Inline {
 
 fn create_inline_hasher(algo: HashAlgorithm) -> Box<dyn InlineHasher> {
     match algo {
-        HashAlgorithm::Md5 => Box::new(DigestInline(md5::Md5::new())),
-        HashAlgorithm::Sha1 => Box::new(DigestInline(sha1::Sha1::new())),
         HashAlgorithm::Sha256 => Box::new(IcDigestInline(Sha256::new())),
         HashAlgorithm::Sha512 => Box::new(IcDigestInline(Sha512::new())),
-        HashAlgorithm::Blake3 => Box::new(Blake3Inline(blake3::Hasher::new())),
         HashAlgorithm::Crc32 => Box::new(Crc32Inline(crc32fast::Hasher::new())),
     }
 }

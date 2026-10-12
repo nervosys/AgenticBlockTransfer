@@ -233,7 +233,8 @@ pub fn send_image(
     let start = Instant::now();
 
     // Calculate image hash
-    let hash = blake3::hash(&image_data).to_hex().to_string();
+    use ironcrypto::prelude::Digest;
+    let hash = hex::encode(ironcrypto::hash::Sha256::digest(&image_data));
 
     // Send announcement
     let announce = SessionAnnounce {

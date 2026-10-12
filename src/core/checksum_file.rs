@@ -5,7 +5,8 @@
 //   - BSD format: `SHA256 (<filename>) = <hash>`
 //   - Simple format: `<hash>` (single hash, no filename)
 //
-// Supports SHA-256, SHA-512, SHA-1, MD5, BLAKE3 hash formats.
+// Supports SHA-256 and SHA-512 hash formats. MD5, SHA-1, and BLAKE3 entries are
+// skipped with a warning.
 // Used for `abt verify --checksum-file SHA256SUMS` to validate downloads
 // against distribution-provided checksum files.
 //
@@ -21,31 +22,23 @@ use std::path::Path;
 /// Detected hash algorithm from file content or filename.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HashAlgorithm {
-    Md5,
-    Sha1,
     Sha256,
     Sha512,
-    Blake3,
 }
 
 impl HashAlgorithm {
     /// Expected hex string length for this algorithm.
     pub fn hex_len(&self) -> usize {
         match self {
-            HashAlgorithm::Md5 => 32,
-            HashAlgorithm::Sha1 => 40,
             HashAlgorithm::Sha256 => 64,
             HashAlgorithm::Sha512 => 128,
-            HashAlgorithm::Blake3 => 64,
         }
     }
 
     /// Detect algorithm from a hex hash string length.
     pub fn from_hex_len(len: usize) -> Option<HashAlgorithm> {
         match len {
-            32 => Some(HashAlgorithm::Md5),
-            40 => Some(HashAlgorithm::Sha1),
-            64 => Some(HashAlgorithm::Sha256), // Could also be BLAKE3
+            64 => Some(HashAlgorithm::Sha256),
             128 => Some(HashAlgorithm::Sha512),
             _ => None,
         }
@@ -58,12 +51,6 @@ impl HashAlgorithm {
             Some(HashAlgorithm::Sha256)
         } else if lower.contains("sha512") || lower.ends_with(".sha512") {
             Some(HashAlgorithm::Sha512)
-        } else if lower.contains("sha1") || lower.ends_with(".sha1") {
-            Some(HashAlgorithm::Sha1)
-        } else if lower.contains("md5") || lower.ends_with(".md5") {
-            Some(HashAlgorithm::Md5)
-        } else if lower.contains("blake3") || lower.ends_with(".b3") {
-            Some(HashAlgorithm::Blake3)
         } else {
             None
         }
@@ -72,11 +59,8 @@ impl HashAlgorithm {
     /// Algorithm name string.
     pub fn name(&self) -> &'static str {
         match self {
-            HashAlgorithm::Md5 => "MD5",
-            HashAlgorithm::Sha1 => "SHA-1",
             HashAlgorithm::Sha256 => "SHA-256",
             HashAlgorithm::Sha512 => "SHA-512",
-            HashAlgorithm::Blake3 => "BLAKE3",
         }
     }
 }
@@ -187,8 +171,11 @@ pub fn parse_checksum_file(content: &str, source_filename: &str) -> Result<Check
             continue;
         }
 
-        // Skip unrecognized lines
-        warn!("Skipping unrecognized checksum line: {}", line);
+        // Skip unrecognized or unsupported (MD5, SHA-1, BLAKE3) lines
+        warn!(
+            "Skipping unrecognized or unsupported checksum line (only SHA-256 and SHA-512 are supported): {}",
+            line
+        );
     }
 
     let detected_algo = if !entries.is_empty() {
@@ -216,15 +203,12 @@ fn parse_bsd_line(line: &str) -> Option<ChecksumEntry> {
     let hash = line[hash_start..].trim().to_lowercase();
 
     let algorithm = match algo_str.to_uppercase().as_str() {
-        "MD5" => HashAlgorithm::Md5,
-        "SHA1" => HashAlgorithm::Sha1,
         "SHA256" => HashAlgorithm::Sha256,
         "SHA512" => HashAlgorithm::Sha512,
-        "BLAKE3" => HashAlgorithm::Blake3,
         _ => return None,
     };
 
-    if !is_valid_hex(&hash) {
+    if !is_valid_hex(&hash) || hash.len() != algorithm.hex_len() {
         return None;
     }
 
@@ -255,9 +239,7 @@ fn parse_gnu_line(line: &str, algo_hint: Option<HashAlgorithm>) -> Option<Checks
     }
 
     let binary = line.contains(" *");
-    let algorithm = algo_hint
-        .or_else(|| HashAlgorithm::from_hex_len(hash.len()))
-        .unwrap_or(HashAlgorithm::Sha256);
+    let algorithm = detect_entry_algorithm(&hash, algo_hint)?;
 
     Some(ChecksumEntry {
         hash,
@@ -267,6 +249,18 @@ fn parse_gnu_line(line: &str, algo_hint: Option<HashAlgorithm>) -> Option<Checks
     })
 }
 
+/// Pick the algorithm for a bare hash: the filename hint if it fits the hash length,
+/// otherwise the algorithm implied by the length. `None` if neither fits, so a line
+/// whose length doesn't match its file's algorithm is skipped rather than misread.
+fn detect_entry_algorithm(hash: &str, algo_hint: Option<HashAlgorithm>) -> Option<HashAlgorithm> {
+    let algorithm = match algo_hint {
+        Some(hint) if hint.hex_len() == hash.len() => hint,
+        Some(_) => return None,
+        None => HashAlgorithm::from_hex_len(hash.len())?,
+    };
+    Some(algorithm)
+}
+
 /// Parse a simple line that's just a hash value (no filename).
 fn parse_simple_line(line: &str, algo_hint: Option<HashAlgorithm>) -> Option<ChecksumEntry> {
     let hash = line.trim().to_lowercase();
@@ -274,9 +268,7 @@ fn parse_simple_line(line: &str, algo_hint: Option<HashAlgorithm>) -> Option<Che
         return None;
     }
 
-    let algorithm = algo_hint
-        .or_else(|| HashAlgorithm::from_hex_len(hash.len()))
-        .unwrap_or(HashAlgorithm::Sha256);
+    let algorithm = detect_entry_algorithm(&hash, algo_hint)?;
 
     Some(ChecksumEntry {
         hash,
@@ -350,20 +342,6 @@ pub async fn verify_file_checksum(file_path: &Path, expected: &ChecksumEntry) ->
             hasher.update(&data);
             hex::encode(hasher.finalize())
         }
-        HashAlgorithm::Sha1 => {
-            let mut hasher: sha1::Sha1 = sha1::Digest::new();
-            sha1::Digest::update(&mut hasher, &data);
-            hex::encode(sha1::Digest::finalize(hasher))
-        }
-        HashAlgorithm::Md5 => {
-            let mut hasher: md5::Md5 = md5::Digest::new();
-            md5::Digest::update(&mut hasher, &data);
-            hex::encode(md5::Digest::finalize(hasher))
-        }
-        HashAlgorithm::Blake3 => {
-            let hash = blake3::hash(&data);
-            hash.to_hex().to_string()
-        }
     };
 
     let matches = computed == expected.hash;
@@ -416,11 +394,10 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_bsd_format_md5() {
+    fn test_parse_bsd_format_md5_is_skipped() {
         let content = "MD5 (file.bin) = d41d8cd98f00b204e9800998ecf8427e";
         let cf = parse_checksum_file(content, "checksums.txt").unwrap();
-        assert_eq!(cf.entries.len(), 1);
-        assert_eq!(cf.entries[0].algorithm, HashAlgorithm::Md5);
+        assert!(cf.entries.is_empty());
     }
 
     #[test]
@@ -433,13 +410,19 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_md5sums() {
+    fn test_parse_md5sums_is_skipped() {
         let content = "d41d8cd98f00b204e9800998ecf8427e  empty.txt\n\
                         098f6bcd4621d373cade4e832627b4f6  test.txt";
         let cf = parse_checksum_file(content, "MD5SUMS").unwrap();
-        assert_eq!(cf.entries.len(), 2);
-        assert_eq!(cf.entries[0].algorithm, HashAlgorithm::Md5);
-        assert_eq!(cf.entries[1].algorithm, HashAlgorithm::Md5);
+        assert!(cf.entries.is_empty());
+    }
+
+    #[test]
+    fn test_parse_rejects_length_mismatch_for_filename_algorithm() {
+        // A 40-character (SHA-1-length) hash in a SHA256SUMS file must not be read as SHA-256.
+        let content = "da39a3ee5e6b4b0d3255bfef95601890afd80709  file.iso";
+        let cf = parse_checksum_file(content, "SHA256SUMS").unwrap();
+        assert!(cf.entries.is_empty());
     }
 
     #[test]
@@ -512,34 +495,22 @@ mod tests {
             HashAlgorithm::from_filename("sha512sums.txt"),
             Some(HashAlgorithm::Sha512)
         );
-        assert_eq!(
-            HashAlgorithm::from_filename("MD5SUMS"),
-            Some(HashAlgorithm::Md5)
-        );
-        assert_eq!(
-            HashAlgorithm::from_filename("image.iso.sha1"),
-            Some(HashAlgorithm::Sha1)
-        );
-        assert_eq!(
-            HashAlgorithm::from_filename("file.b3"),
-            Some(HashAlgorithm::Blake3)
-        );
+        assert_eq!(HashAlgorithm::from_filename("MD5SUMS"), None);
+        assert_eq!(HashAlgorithm::from_filename("image.iso.sha1"), None);
+        assert_eq!(HashAlgorithm::from_filename("file.b3"), None);
         assert_eq!(HashAlgorithm::from_filename("random.txt"), None);
     }
 
     #[test]
     fn test_algorithm_hex_len() {
-        assert_eq!(HashAlgorithm::Md5.hex_len(), 32);
-        assert_eq!(HashAlgorithm::Sha1.hex_len(), 40);
         assert_eq!(HashAlgorithm::Sha256.hex_len(), 64);
         assert_eq!(HashAlgorithm::Sha512.hex_len(), 128);
-        assert_eq!(HashAlgorithm::Blake3.hex_len(), 64);
     }
 
     #[test]
     fn test_algorithm_from_hex_len() {
-        assert_eq!(HashAlgorithm::from_hex_len(32), Some(HashAlgorithm::Md5));
-        assert_eq!(HashAlgorithm::from_hex_len(40), Some(HashAlgorithm::Sha1));
+        assert_eq!(HashAlgorithm::from_hex_len(32), None);
+        assert_eq!(HashAlgorithm::from_hex_len(40), None);
         assert_eq!(HashAlgorithm::from_hex_len(64), Some(HashAlgorithm::Sha256));
         assert_eq!(
             HashAlgorithm::from_hex_len(128),
@@ -571,7 +542,7 @@ mod tests {
     #[test]
     fn test_hash_algorithm_display() {
         assert_eq!(format!("{}", HashAlgorithm::Sha256), "SHA-256");
-        assert_eq!(format!("{}", HashAlgorithm::Md5), "MD5");
+        assert_eq!(format!("{}", HashAlgorithm::Sha512), "SHA-512");
     }
 
     #[test]
@@ -591,7 +562,8 @@ mod tests {
 
     #[test]
     fn test_parse_sha512_file() {
-        let hash_512 = "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e8";
+        // SHA-512 of "hello" (128 hex characters).
+        let hash_512 = "9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043";
         let content = format!("{}  large-file.bin", hash_512);
         let cf = parse_checksum_file(&content, "SHA512SUMS").unwrap();
         assert_eq!(cf.entries.len(), 1);

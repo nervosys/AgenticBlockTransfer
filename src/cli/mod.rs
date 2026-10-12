@@ -171,7 +171,7 @@ pub enum Command {
     #[command(visible_alias = "mirrors")]
     Mirror(MirrorOpts),
 
-    /// Parse and verify checksum files (SHA256SUMS, MD5SUMS, etc.)
+    /// Parse and verify checksum files (SHA256SUMS, SHA512SUMS, etc.)
     #[command(visible_alias = "checksumfile")]
     ChecksumFile(ChecksumFileOpts),
 

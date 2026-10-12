@@ -1,7 +1,6 @@
 use anyhow::Result;
 use ironcrypto::hash::{Sha256, Sha512};
 use ironcrypto::prelude::Digest as IcDigest;
-use md5::Digest;
 use std::io::Read;
 use std::path::Path;
 
@@ -27,7 +26,8 @@ pub fn hash_file(path: &Path, algorithm: HashAlgorithm, progress: &Progress) -> 
 ///
 /// # FIPS Compliance
 /// In FIPS mode, validates the algorithm against FIPS 180-4 / SP 800-131A
-/// before proceeding. MD5, SHA-1, BLAKE3, and CRC32 are rejected.
+/// before proceeding. CRC32 is rejected. Only SHA-256 and SHA-512 remain
+/// available as FIPS-approved hashes.
 ///
 /// # Safety Invariant SI-2
 /// The output hash is deterministic: calling this function twice with the same
@@ -86,21 +86,6 @@ pub(crate) trait DynHasher: Send {
     fn finalize_hex(self: Box<Self>) -> String;
 }
 
-/// Wrapper for a RustCrypto `Digest` hasher (MD5, SHA-1).
-struct DigestHasher<D: Digest + Send>(D);
-
-impl<D: Digest + Send> DynHasher for DigestHasher<D>
-where
-    md5::digest::Output<D>: std::fmt::LowerHex,
-{
-    fn update(&mut self, data: &[u8]) {
-        self.0.update(data);
-    }
-    fn finalize_hex(self: Box<Self>) -> String {
-        format!("{:x}", self.0.finalize())
-    }
-}
-
 /// Wrapper for an IronCrypto digest (SHA-256, SHA-512).
 struct IcDigestHasher<D: IcDigest + Send>(D);
 
@@ -110,18 +95,6 @@ impl<D: IcDigest + Send> DynHasher for IcDigestHasher<D> {
     }
     fn finalize_hex(self: Box<Self>) -> String {
         hex::encode(self.0.finalize())
-    }
-}
-
-/// Wrapper for BLAKE3 (different API than `Digest`).
-struct Blake3Hasher(blake3::Hasher);
-
-impl DynHasher for Blake3Hasher {
-    fn update(&mut self, data: &[u8]) {
-        self.0.update(data);
-    }
-    fn finalize_hex(self: Box<Self>) -> String {
-        self.0.finalize().to_hex().to_string()
     }
 }
 
@@ -140,11 +113,8 @@ impl DynHasher for Crc32Hasher {
 /// Create a hasher for the given algorithm.
 pub(crate) fn create_hasher(algorithm: HashAlgorithm) -> Box<dyn DynHasher> {
     match algorithm {
-        HashAlgorithm::Md5 => Box::new(DigestHasher(md5::Md5::new())),
-        HashAlgorithm::Sha1 => Box::new(DigestHasher(sha1::Sha1::new())),
         HashAlgorithm::Sha256 => Box::new(IcDigestHasher(Sha256::new())),
         HashAlgorithm::Sha512 => Box::new(IcDigestHasher(Sha512::new())),
-        HashAlgorithm::Blake3 => Box::new(Blake3Hasher(blake3::Hasher::new())),
         HashAlgorithm::Crc32 => Box::new(Crc32Hasher(crc32fast::Hasher::new())),
     }
 }

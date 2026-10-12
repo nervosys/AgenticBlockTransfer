@@ -827,7 +827,7 @@ pub fn validate_hash_format(hash_str: &str) -> Vec<SecurityFinding> {
     let algo = parts[0].to_lowercase();
     let hex_value = parts[1];
 
-    let valid_algos = ["sha256", "sha512", "sha1", "md5", "blake3", "crc32"];
+    let valid_algos = ["sha256", "sha512", "crc32"];
     if !valid_algos.contains(&algo.as_str()) {
         findings.push(SecurityFinding::new(
             "SEC-061",
@@ -858,9 +858,6 @@ pub fn validate_hash_format(hash_str: &str) -> Vec<SecurityFinding> {
     let expected_len = match algo.as_str() {
         "sha256" => Some(64),
         "sha512" => Some(128),
-        "sha1" => Some(40),
-        "md5" => Some(32),
-        "blake3" => Some(64),
         "crc32" => Some(8),
         _ => None,
     };

@@ -36,7 +36,7 @@ abt verify -o /dev/sdb --expected-hash sha256:abc123...
 
 ```bash
 abt checksum image.iso
-abt checksum image.iso -a sha256 -a blake3 -a md5
+abt checksum image.iso -a sha256 -a sha512 -a crc32
 ```
 
 ## Safety: Dry-Run

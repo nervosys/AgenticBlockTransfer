@@ -170,8 +170,7 @@ fn build_paths() -> Value {
             "post": {
                 "operationId": "computeChecksum",
                 "summary": "Compute checksums of a file or device",
-                "description": "Compute one or more hash digests (SHA-256, SHA-512, MD5, \
-                    BLAKE3, CRC32, SHA-1) of a file or device.",
+                "description": "Compute one or more hash digests (SHA-256, SHA-512, CRC32) of a file or device.",
                 "tags": ["verification"],
                 "requestBody": {
                     "required": true,
@@ -345,7 +344,7 @@ fn build_schemas() -> Value {
                 },
                 "hash_algorithm": {
                     "type": "string",
-                    "enum": ["md5", "sha1", "sha256", "sha512", "blake3", "crc32"],
+                    "enum": ["sha256", "sha512", "crc32"],
                     "default": "sha256"
                 },
                 "expected_hash": {
@@ -396,7 +395,7 @@ fn build_schemas() -> Value {
                 },
                 "hash_algorithm": {
                     "type": "string",
-                    "enum": ["md5", "sha1", "sha256", "sha512", "blake3", "crc32"],
+                    "enum": ["sha256", "sha512", "crc32"],
                     "default": "sha256"
                 }
             }
@@ -413,7 +412,7 @@ fn build_schemas() -> Value {
                     "type": "array",
                     "items": {
                         "type": "string",
-                        "enum": ["md5", "sha1", "sha256", "sha512", "blake3", "crc32"]
+                        "enum": ["sha256", "sha512", "crc32"]
                     },
                     "default": ["sha256"]
                 }

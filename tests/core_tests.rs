@@ -186,32 +186,11 @@ mod tests {
         }
 
         #[test]
-        fn md5_hello() {
-            let hash = hash_bytes(b"hello", HashAlgorithm::Md5);
-            assert_eq!(hash, "5d41402abc4b2a76b9719d911017c592");
-        }
-
-        #[test]
-        fn sha1_hello() {
-            let hash = hash_bytes(b"hello", HashAlgorithm::Sha1);
-            assert_eq!(hash, "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d");
-        }
-
-        #[test]
         fn sha512_hello() {
             let hash = hash_bytes(b"hello", HashAlgorithm::Sha512);
             assert_eq!(
                 hash,
                 "9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043"
-            );
-        }
-
-        #[test]
-        fn blake3_hello() {
-            let hash = hash_bytes(b"hello", HashAlgorithm::Blake3);
-            assert_eq!(
-                hash,
-                "ea8f163db38682925e4491c5e58d4bb3506ef8c14eb78a86e908c5624a67200f"
             );
         }
 
@@ -225,11 +204,8 @@ mod tests {
         fn all_algorithms_produce_output() {
             let data = b"test data for all algorithms";
             for algo in [
-                HashAlgorithm::Md5,
-                HashAlgorithm::Sha1,
                 HashAlgorithm::Sha256,
                 HashAlgorithm::Sha512,
-                HashAlgorithm::Blake3,
                 HashAlgorithm::Crc32,
             ] {
                 let hash = hash_bytes(data, algo);
@@ -434,7 +410,6 @@ mod tests {
         #[test]
         fn hash_algorithm_display() {
             assert_eq!(format!("{}", HashAlgorithm::Sha256), "SHA-256");
-            assert_eq!(format!("{}", HashAlgorithm::Blake3), "BLAKE3");
             assert_eq!(format!("{}", HashAlgorithm::Crc32), "CRC32");
         }
 

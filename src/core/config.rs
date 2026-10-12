@@ -241,7 +241,7 @@ sparse = true
             write: WriteConfig {
                 block_size: "8M".to_string(),
                 verify: false,
-                hash_algorithm: "blake3".to_string(),
+                hash_algorithm: "sha256".to_string(),
                 direct_io: false,
                 sync: false,
                 sparse: true,

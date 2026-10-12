@@ -100,36 +100,17 @@ pub struct DeviceFingerprint {
 impl DeviceFingerprint {
     /// Create a fingerprint from a DeviceInfo.
     ///
-    /// # FIPS Compliance
-    /// In FIPS mode, uses SHA-256 (FIPS 180-4 approved) instead of BLAKE3.
-    /// BLAKE3 is not NIST-approved and must not be used for integrity-relevant
-    /// operations in federal / DoD environments.
-    ///
-    /// In default mode, BLAKE3 is used for performance (faster than SHA-256).
+    /// The token is a SHA-256 digest truncated to 128 bits (SP 800-107 Rev 1), the same
+    /// in every mode, so fingerprints do not depend on the compliance setting.
     pub fn from_device(dev: &DeviceInfo) -> Self {
-        let token = if super::compliance::is_fips_mode() {
-            // SP 800-131A / FIPS 180-4: Use SHA-256
-            super::compliance::fips_device_token(
-                &dev.path,
-                &dev.name,
-                dev.serial.as_deref(),
-                dev.size,
-                dev.removable,
-                dev.is_system,
-            )
-        } else {
-            // Default: BLAKE3 (fast, not FIPS-approved)
-            let mut hasher = blake3::Hasher::new();
-            hasher.update(dev.path.as_bytes());
-            hasher.update(dev.name.as_bytes());
-            if let Some(ref s) = dev.serial {
-                hasher.update(s.as_bytes());
-            }
-            hasher.update(&dev.size.to_le_bytes());
-            hasher.update(&[dev.removable as u8, dev.is_system as u8]);
-            let hash = hasher.finalize();
-            hex::encode(&hash.as_bytes()[..16]) // 128-bit token
-        };
+        let token = super::compliance::fips_device_token(
+            &dev.path,
+            &dev.name,
+            dev.serial.as_deref(),
+            dev.size,
+            dev.removable,
+            dev.is_system,
+        );
 
         Self {
             path: dev.path.clone(),

@@ -44,7 +44,7 @@
 //!   Fingerprint tokens are deterministic: the same device produces the same
 //!   token. Different devices produce different tokens (collision-resistant).
 //!   Verified by:
-//!   - BLAKE3 128-bit truncation collision resistance
+//!   - SHA-256 128-bit truncation collision resistance
 //!   - Property test: deterministic token generation
 //!
 //! **SI-7: Retry Bounded Termination**
@@ -833,11 +833,8 @@ mod tests {
         let progress = progress::Progress::new(data.len() as u64);
 
         for algo in [
-            types::HashAlgorithm::Md5,
-            types::HashAlgorithm::Sha1,
             types::HashAlgorithm::Sha256,
             types::HashAlgorithm::Sha512,
-            types::HashAlgorithm::Blake3,
             types::HashAlgorithm::Crc32,
         ] {
             let hash1 =

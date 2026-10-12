@@ -230,8 +230,6 @@ pub struct MetalinkInfo {
     pub size: u64,
     /// SHA-256 hash (if specified in the metalink).
     pub sha256: Option<String>,
-    /// MD5 hash (if specified).
-    pub md5: Option<String>,
 }
 
 /// Parse a simple metalink-like document from text content.
@@ -242,7 +240,6 @@ pub fn parse_metalink_urls(content: &str) -> Result<MetalinkInfo> {
     let mut filename = String::new();
     let mut size: u64 = 0;
     let mut sha256 = None;
-    let mut md5 = None;
 
     for line in content.lines() {
         let line = line.trim();
@@ -286,11 +283,6 @@ pub fn parse_metalink_urls(content: &str) -> Result<MetalinkInfo> {
                 sha256 = Some(h);
             }
         }
-        if line.contains("<hash") && line.contains("md5") {
-            if let Some(h) = extract_tag_content(line, "hash") {
-                md5 = Some(h);
-            }
-        }
     }
 
     mirrors.sort_by_key(|m| m.priority);
@@ -300,7 +292,6 @@ pub fn parse_metalink_urls(content: &str) -> Result<MetalinkInfo> {
         filename,
         size,
         sha256,
-        md5,
     })
 }
 
